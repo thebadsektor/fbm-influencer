@@ -6,7 +6,7 @@ import { sendEmail } from "@/lib/email";
 
 export async function POST(
     req: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const { id: feedbackId } = await params;

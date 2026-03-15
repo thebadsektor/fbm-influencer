@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 
 export async function POST(
     req: Request,
-    { params }: { params: { id: string; commentId: string } }
+    { params }: { params: Promise<{ id: string; commentId: string }> }
 ) {
     try {
         const { commentId } = await params;
