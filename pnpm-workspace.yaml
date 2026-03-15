@@ -1,0 +1,7 @@
+onlyBuiltDependencies:
+  - '@prisma/engines'
+  - core-js
+  - msw
+  - prisma
+  - sharp
+  - unrs-resolver
