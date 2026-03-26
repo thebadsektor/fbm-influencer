@@ -114,3 +114,28 @@ export type FeedbackNotificationEmail = Prisma.FeedbackNotificationEmailModel
  * 
  */
 export type Subscription = Prisma.SubscriptionModel
+/**
+ * Model Campaign
+ * 
+ */
+export type Campaign = Prisma.CampaignModel
+/**
+ * Model Document
+ * 
+ */
+export type Document = Prisma.DocumentModel
+/**
+ * Model KHSet
+ * 
+ */
+export type KHSet = Prisma.KHSetModel
+/**
+ * Model Result
+ * 
+ */
+export type Result = Prisma.ResultModel
+/**
+ * Model Credential
+ * 
+ */
+export type Credential = Prisma.CredentialModel

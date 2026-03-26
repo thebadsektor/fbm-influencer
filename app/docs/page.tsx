@@ -58,7 +58,7 @@ export default function DocsPage() {
                     Subscription & Gating System
                 </h1>
                 <p className="text-lg text-muted-foreground max-w-2xl">
-                    A comprehensive guide on managing feature access, plans, and user sessions within your SaaS application.
+                    A comprehensive guide on managing feature access, plans, and user sessions within your influencer scouting workflow.
                 </p>
             </motion.div>
 

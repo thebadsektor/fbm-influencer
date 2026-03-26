@@ -65,7 +65,12 @@ export const ModelName = {
   Feedback: 'Feedback',
   FeedbackReply: 'FeedbackReply',
   FeedbackNotificationEmail: 'FeedbackNotificationEmail',
-  Subscription: 'Subscription'
+  Subscription: 'Subscription',
+  Campaign: 'Campaign',
+  Document: 'Document',
+  KHSet: 'KHSet',
+  Result: 'Result',
+  Credential: 'Credential'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -292,12 +297,111 @@ export const SubscriptionScalarFieldEnum = {
 export type SubscriptionScalarFieldEnum = (typeof SubscriptionScalarFieldEnum)[keyof typeof SubscriptionScalarFieldEnum]
 
 
+export const CampaignScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  status: 'status',
+  userId: 'userId',
+  marketingGoal: 'marketingGoal',
+  brandNiche: 'brandNiche',
+  targetAudienceAge: 'targetAudienceAge',
+  targetLocation: 'targetLocation',
+  audienceInterests: 'audienceInterests',
+  minFollowers: 'minFollowers',
+  minEngagementRate: 'minEngagementRate',
+  numberOfInfluencers: 'numberOfInfluencers',
+  targetKeywords: 'targetKeywords',
+  targetHashtags: 'targetHashtags',
+  trendingTopics: 'trendingTopics',
+  competitorBrands: 'competitorBrands',
+  additionalKeywords: 'additionalKeywords',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CampaignScalarFieldEnum = (typeof CampaignScalarFieldEnum)[keyof typeof CampaignScalarFieldEnum]
+
+
+export const DocumentScalarFieldEnum = {
+  id: 'id',
+  campaignId: 'campaignId',
+  filename: 'filename',
+  mimeType: 'mimeType',
+  content: 'content',
+  createdAt: 'createdAt'
+} as const
+
+export type DocumentScalarFieldEnum = (typeof DocumentScalarFieldEnum)[keyof typeof DocumentScalarFieldEnum]
+
+
+export const KHSetScalarFieldEnum = {
+  id: 'id',
+  campaignId: 'campaignId',
+  keywords: 'keywords',
+  hashtags: 'hashtags',
+  locked: 'locked',
+  status: 'status',
+  platform: 'platform',
+  n8nExecutionId: 'n8nExecutionId',
+  parentSetId: 'parentSetId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type KHSetScalarFieldEnum = (typeof KHSetScalarFieldEnum)[keyof typeof KHSetScalarFieldEnum]
+
+
+export const ResultScalarFieldEnum = {
+  id: 'id',
+  khSetId: 'khSetId',
+  platform: 'platform',
+  creatorName: 'creatorName',
+  creatorHandle: 'creatorHandle',
+  profileUrl: 'profileUrl',
+  email: 'email',
+  emailSource: 'emailSource',
+  confidence: 'confidence',
+  followers: 'followers',
+  engagementRate: 'engagementRate',
+  rawData: 'rawData',
+  createdAt: 'createdAt'
+} as const
+
+export type ResultScalarFieldEnum = (typeof ResultScalarFieldEnum)[keyof typeof ResultScalarFieldEnum]
+
+
+export const CredentialScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  serviceType: 'serviceType',
+  provider: 'provider',
+  label: 'label',
+  encryptedValue: 'encryptedValue',
+  iv: 'iv',
+  authTag: 'authTag',
+  isPlatform: 'isPlatform',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CredentialScalarFieldEnum = (typeof CredentialScalarFieldEnum)[keyof typeof CredentialScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
 } as const
 
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
+
+
+export const NullableJsonNullValueInput = {
+  DbNull: DbNull,
+  JsonNull: JsonNull
+} as const
+
+export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
 export const QueryMode = {
@@ -314,4 +418,13 @@ export const NullsOrder = {
 } as const
 
 export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
+export const JsonNullValueFilter = {
+  DbNull: DbNull,
+  JsonNull: JsonNull,
+  AnyNull: AnyNull
+} as const
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
 

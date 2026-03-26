@@ -1,4 +1,4 @@
-import { House, SquaresFour, ShieldCheck, UserCircle, Gear, Shield, Users, ChatCircleText } from "@phosphor-icons/react";
+import { House, SquaresFour, Users, ChatCircleText, MagnifyingGlass, Key } from "@phosphor-icons/react";
 
 export interface NavItem {
     label: string;
@@ -31,6 +31,16 @@ export const navigationConfig = {
         ] as NavItem[],
         sidebarNav: [
             {
+                label: "Campaigns",
+                href: "/campaigns",
+                icon: MagnifyingGlass,
+            },
+            {
+                label: "Credentials",
+                href: "/credentials",
+                icon: Key,
+            },
+            {
                 label: "Manage Users",
                 href: "/admin/users",
                 icon: Users,
@@ -49,7 +59,6 @@ export const navigationConfig = {
                 adminOnly: true,
             },
         ] as NavItem[],
-
     },
     user: {
         mainNav: [
@@ -59,11 +68,6 @@ export const navigationConfig = {
                 icon: House,
             },
             {
-                label: "Public Content",
-                href: "/public-demo",
-                icon: SquaresFour,
-            },
-            {
                 label: "Forum",
                 href: "/forum",
                 icon: ChatCircleText,
@@ -71,9 +75,14 @@ export const navigationConfig = {
         ] as NavItem[],
         sidebarNav: [
             {
-                label: "Home",
-                href: "/",
-                icon: House,
+                label: "Campaigns",
+                href: "/campaigns",
+                icon: MagnifyingGlass,
+            },
+            {
+                label: "Credentials",
+                href: "/credentials",
+                icon: Key,
             },
         ] as NavItem[],
     }

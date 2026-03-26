@@ -1,0 +1,90 @@
+import prisma from "@/lib/prisma";
+import { Prisma } from "@/app/generated/prisma/client";
+import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
+import { n8nCallbackSchema, parseBody } from "@/lib/validations";
+
+export async function POST(req: NextRequest) {
+  let body: unknown;
+
+  // HMAC signature verification (skip if N8N_WEBHOOK_SECRET not configured)
+  const secret = process.env.N8N_WEBHOOK_SECRET;
+  if (secret) {
+    const signature = req.headers.get("x-n8n-signature");
+    if (!signature) {
+      return NextResponse.json(
+        { error: "Missing x-n8n-signature header" },
+        { status: 401 }
+      );
+    }
+    const rawBody = await req.text();
+    const expected = crypto
+      .createHmac("sha256", secret)
+      .update(rawBody)
+      .digest("hex");
+    if (signature !== expected) {
+      return NextResponse.json(
+        { error: "Invalid signature" },
+        { status: 401 }
+      );
+    }
+    body = JSON.parse(rawBody);
+  } else {
+    body = await req.json();
+  }
+
+  // Validate body
+  const parsed = parseBody(n8nCallbackSchema, body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  const { khSetId, results, platform, error } = parsed.data;
+
+  const set = await prisma.kHSet.findUnique({ where: { id: khSetId } });
+  if (!set) return NextResponse.json({ error: "KH set not found" }, { status: 404 });
+
+  if (error) {
+    await prisma.kHSet.update({
+      where: { id: khSetId },
+      data: { status: "failed" },
+    });
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+
+  if (Array.isArray(results)) {
+    for (const r of results) {
+      const rec = r as Record<string, unknown>;
+      await prisma.result.create({
+        data: {
+          khSetId,
+          platform:
+            (rec.platform as string) ||
+            platform ||
+            set.platform ||
+            "unknown",
+          creatorName: (rec.creatorName || rec.name) as string | undefined,
+          creatorHandle: (rec.creatorHandle ||
+            rec.handle ||
+            rec.username) as string | undefined,
+          profileUrl: (rec.profileUrl || rec.url) as string | undefined,
+          email: rec.email as string | undefined,
+          emailSource: (rec.emailSource || rec.source) as string | undefined,
+          confidence: rec.confidence as string | undefined,
+          followers: rec.followers ? String(rec.followers) : null,
+          engagementRate: rec.engagementRate
+            ? String(rec.engagementRate)
+            : null,
+          rawData: rec as Prisma.InputJsonValue,
+        },
+      });
+    }
+  }
+
+  await prisma.kHSet.update({
+    where: { id: khSetId },
+    data: { status: "completed" },
+  });
+
+  return NextResponse.json({ ok: true, status: "completed" });
+}

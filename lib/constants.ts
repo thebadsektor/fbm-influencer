@@ -1,4 +1,4 @@
 export const saasMeta = {
-    name: "SAAS Starter",
-    description: "Next.js + Better-auth + Stripe + Prisma + Postgres + MinIO + Shadcn UI + Tailwind CSS",
+    name: "Influencer Funnel Builder",
+    description: "Find, vet, and connect with the right influencers for your brand.",
 };

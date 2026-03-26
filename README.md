@@ -1,6 +1,6 @@
-# SaaS Starter Kit
+# Influencer Funnel Builder
 
-A robust and scalable SaaS starter kit built with Next.js, Better Auth, Prisma, and Stripe. This project provides a solid foundation for building your next SaaS application with built-in subscription management, authentication, and more.
+AI-powered influencer scouting platform. Find creators, generate smart keywords, and build influencer funnels — built with Next.js, Better Auth, Prisma, and Stripe.
 
 ## Tech Stack
 

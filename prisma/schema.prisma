@@ -31,6 +31,8 @@ model User {
   discussionReports DiscussionReport[]
   commentVotes      CommentVote[]
   notifications     Notification[]
+  campaigns         Campaign[]
+  credentials       Credential[]
 
   @@unique([email])
   @@map("user")
@@ -240,4 +242,101 @@ model Subscription {
   trialEnd             DateTime?
 
   @@map("subscription")
+}
+
+// ── Influencer Scouting Models ─────────────────────────
+
+model Campaign {
+  id                  String     @id @default(cuid())
+  name                String
+  status              String     @default("draft")
+  userId              String?
+  user                User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  marketingGoal       String
+  brandNiche          String
+  targetAudienceAge   String
+  targetLocation      String[]
+  audienceInterests   String[]
+  minFollowers        String
+  minEngagementRate   Float      @default(3)
+  numberOfInfluencers Int        @default(25)
+  targetKeywords      Int        @default(5)
+  targetHashtags      Int        @default(5)
+  trendingTopics      String?
+  competitorBrands    String?
+  additionalKeywords  String?
+  documents           Document[]
+  khSets              KHSet[]
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  @@map("campaign")
+}
+
+model Document {
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  filename   String
+  mimeType   String
+  content    String   @db.Text
+  createdAt  DateTime @default(now())
+
+  @@map("document")
+}
+
+model KHSet {
+  id             String   @id @default(cuid())
+  campaignId     String
+  campaign       Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  keywords       String[]
+  hashtags       String[]
+  locked         Boolean  @default(false)
+  status         String   @default("draft")
+  platform       String?
+  n8nExecutionId String?
+  results        Result[]
+  parentSetId    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("kh_set")
+}
+
+model Result {
+  id             String   @id @default(cuid())
+  khSetId        String
+  khSet          KHSet    @relation(fields: [khSetId], references: [id], onDelete: Cascade)
+  platform       String
+  creatorName    String?
+  creatorHandle  String?
+  profileUrl     String?
+  email          String?
+  emailSource    String?
+  confidence     String?
+  followers      String?
+  engagementRate String?
+  rawData        Json?
+  createdAt      DateTime @default(now())
+
+  @@map("result")
+}
+
+model Credential {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceType    String
+  provider       String
+  label          String
+  encryptedValue String
+  iv             String
+  authTag        String
+  isPlatform     Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, provider, isPlatform])
+  @@map("credential")
 }
