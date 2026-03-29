@@ -49,7 +49,7 @@ const SCOUTING_STEPS: ScoutingStep[] = [
     label: "Filter by Relevance",
     field: "qualified",
     subStats: [
-      { label: "Pool", compute: (s) => s.totalScraped - s.qualified - s.disqualified },
+      { label: "Pool", compute: (s) => Math.max(0, (s.totalScraped || 0) - (s.qualified || 0) - (s.disqualified || 0)) },
       { label: "Relevant", field: "qualified" },
       { label: "Irrelevant", field: "disqualified" },
     ],
