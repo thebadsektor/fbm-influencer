@@ -2198,7 +2198,14 @@ export const KHSetScalarFieldEnum = {
   n8nExecutionId: 'n8nExecutionId',
   parentSetId: 'parentSetId',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  totalScraped: 'totalScraped',
+  qualified: 'qualified',
+  missingEmail: 'missingEmail',
+  enriched: 'enriched',
+  leadPoolUrl: 'leadPoolUrl',
+  extraStats: 'extraStats',
+  lastSyncedAt: 'lastSyncedAt'
 } as const
 
 export type KHSetScalarFieldEnum = (typeof KHSetScalarFieldEnum)[keyof typeof KHSetScalarFieldEnum]
@@ -2247,6 +2254,13 @@ export const SortOrder = {
 } as const
 
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const NullableJsonNullValueInput = {

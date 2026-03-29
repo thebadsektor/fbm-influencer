@@ -1,40 +1,14 @@
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/app/generated/prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
+import { verifyN8nRequest } from "@/lib/verify-n8n-signature";
 import { n8nCallbackSchema, parseBody } from "@/lib/validations";
 
 export async function POST(req: NextRequest) {
-  let body: unknown;
+  const verified = await verifyN8nRequest(req);
+  if (!verified.ok) return verified.response;
 
-  // HMAC signature verification (skip if N8N_WEBHOOK_SECRET not configured)
-  const secret = process.env.N8N_WEBHOOK_SECRET;
-  if (secret) {
-    const signature = req.headers.get("x-n8n-signature");
-    if (!signature) {
-      return NextResponse.json(
-        { error: "Missing x-n8n-signature header" },
-        { status: 401 }
-      );
-    }
-    const rawBody = await req.text();
-    const expected = crypto
-      .createHmac("sha256", secret)
-      .update(rawBody)
-      .digest("hex");
-    if (signature !== expected) {
-      return NextResponse.json(
-        { error: "Invalid signature" },
-        { status: 401 }
-      );
-    }
-    body = JSON.parse(rawBody);
-  } else {
-    body = await req.json();
-  }
-
-  // Validate body
-  const parsed = parseBody(n8nCallbackSchema, body);
+  const parsed = parseBody(n8nCallbackSchema, verified.body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }

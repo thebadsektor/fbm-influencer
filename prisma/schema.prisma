@@ -306,6 +306,7 @@ model KHSet {
   missingEmail   Int       @default(0)
   enriched       Int       @default(0)
   leadPoolUrl    String?
+  extraStats     Json      @default("{}")   // overflow stats e.g. { "enriched2": 15 }
   lastSyncedAt   DateTime?
 
   @@map("kh_set")

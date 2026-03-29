@@ -86,6 +86,16 @@ export const n8nCallbackSchema = z.object({
   error: z.string().optional(),
 });
 
+export const n8nStatsSyncSchema = z.object({
+  khSetId: z.string().min(1, "Missing khSetId"),
+  totalScraped: z.number().int().nonnegative().optional(),
+  qualified: z.number().int().nonnegative().optional(),
+  missingEmail: z.number().int().nonnegative().optional(),
+  enriched: z.number().int().nonnegative().optional(),
+  leadPoolUrl: z.string().url().optional(),
+  extraStats: z.record(z.string(), z.number().int().nonnegative()).optional(),
+});
+
 // ── Helper ─────────────────────────────────────────────
 
 type ParseSuccess<T> = { success: true; data: T };

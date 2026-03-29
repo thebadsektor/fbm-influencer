@@ -20,8 +20,24 @@ export type KHSetModel = runtime.Types.Result.DefaultSelection<Prisma.$KHSetPayl
 
 export type AggregateKHSet = {
   _count: KHSetCountAggregateOutputType | null
+  _avg: KHSetAvgAggregateOutputType | null
+  _sum: KHSetSumAggregateOutputType | null
   _min: KHSetMinAggregateOutputType | null
   _max: KHSetMaxAggregateOutputType | null
+}
+
+export type KHSetAvgAggregateOutputType = {
+  totalScraped: number | null
+  qualified: number | null
+  missingEmail: number | null
+  enriched: number | null
+}
+
+export type KHSetSumAggregateOutputType = {
+  totalScraped: number | null
+  qualified: number | null
+  missingEmail: number | null
+  enriched: number | null
 }
 
 export type KHSetMinAggregateOutputType = {
@@ -34,6 +50,12 @@ export type KHSetMinAggregateOutputType = {
   parentSetId: string | null
   createdAt: Date | null
   updatedAt: Date | null
+  totalScraped: number | null
+  qualified: number | null
+  missingEmail: number | null
+  enriched: number | null
+  leadPoolUrl: string | null
+  lastSyncedAt: Date | null
 }
 
 export type KHSetMaxAggregateOutputType = {
@@ -46,6 +68,12 @@ export type KHSetMaxAggregateOutputType = {
   parentSetId: string | null
   createdAt: Date | null
   updatedAt: Date | null
+  totalScraped: number | null
+  qualified: number | null
+  missingEmail: number | null
+  enriched: number | null
+  leadPoolUrl: string | null
+  lastSyncedAt: Date | null
 }
 
 export type KHSetCountAggregateOutputType = {
@@ -60,9 +88,30 @@ export type KHSetCountAggregateOutputType = {
   parentSetId: number
   createdAt: number
   updatedAt: number
+  totalScraped: number
+  qualified: number
+  missingEmail: number
+  enriched: number
+  leadPoolUrl: number
+  extraStats: number
+  lastSyncedAt: number
   _all: number
 }
 
+
+export type KHSetAvgAggregateInputType = {
+  totalScraped?: true
+  qualified?: true
+  missingEmail?: true
+  enriched?: true
+}
+
+export type KHSetSumAggregateInputType = {
+  totalScraped?: true
+  qualified?: true
+  missingEmail?: true
+  enriched?: true
+}
 
 export type KHSetMinAggregateInputType = {
   id?: true
@@ -74,6 +123,12 @@ export type KHSetMinAggregateInputType = {
   parentSetId?: true
   createdAt?: true
   updatedAt?: true
+  totalScraped?: true
+  qualified?: true
+  missingEmail?: true
+  enriched?: true
+  leadPoolUrl?: true
+  lastSyncedAt?: true
 }
 
 export type KHSetMaxAggregateInputType = {
@@ -86,6 +141,12 @@ export type KHSetMaxAggregateInputType = {
   parentSetId?: true
   createdAt?: true
   updatedAt?: true
+  totalScraped?: true
+  qualified?: true
+  missingEmail?: true
+  enriched?: true
+  leadPoolUrl?: true
+  lastSyncedAt?: true
 }
 
 export type KHSetCountAggregateInputType = {
@@ -100,6 +161,13 @@ export type KHSetCountAggregateInputType = {
   parentSetId?: true
   createdAt?: true
   updatedAt?: true
+  totalScraped?: true
+  qualified?: true
+  missingEmail?: true
+  enriched?: true
+  leadPoolUrl?: true
+  extraStats?: true
+  lastSyncedAt?: true
   _all?: true
 }
 
@@ -141,6 +209,18 @@ export type KHSetAggregateArgs<ExtArgs extends runtime.Types.Extensions.Internal
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: KHSetAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: KHSetSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: KHSetMinAggregateInputType
@@ -171,6 +251,8 @@ export type KHSetGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
   take?: number
   skip?: number
   _count?: KHSetCountAggregateInputType | true
+  _avg?: KHSetAvgAggregateInputType
+  _sum?: KHSetSumAggregateInputType
   _min?: KHSetMinAggregateInputType
   _max?: KHSetMaxAggregateInputType
 }
@@ -187,7 +269,16 @@ export type KHSetGroupByOutputType = {
   parentSetId: string | null
   createdAt: Date
   updatedAt: Date
+  totalScraped: number
+  qualified: number
+  missingEmail: number
+  enriched: number
+  leadPoolUrl: string | null
+  extraStats: runtime.JsonValue
+  lastSyncedAt: Date | null
   _count: KHSetCountAggregateOutputType | null
+  _avg: KHSetAvgAggregateOutputType | null
+  _sum: KHSetSumAggregateOutputType | null
   _min: KHSetMinAggregateOutputType | null
   _max: KHSetMaxAggregateOutputType | null
 }
@@ -222,6 +313,13 @@ export type KHSetWhereInput = {
   parentSetId?: Prisma.StringNullableFilter<"KHSet"> | string | null
   createdAt?: Prisma.DateTimeFilter<"KHSet"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"KHSet"> | Date | string
+  totalScraped?: Prisma.IntFilter<"KHSet"> | number
+  qualified?: Prisma.IntFilter<"KHSet"> | number
+  missingEmail?: Prisma.IntFilter<"KHSet"> | number
+  enriched?: Prisma.IntFilter<"KHSet"> | number
+  leadPoolUrl?: Prisma.StringNullableFilter<"KHSet"> | string | null
+  extraStats?: Prisma.JsonFilter<"KHSet">
+  lastSyncedAt?: Prisma.DateTimeNullableFilter<"KHSet"> | Date | string | null
   campaign?: Prisma.XOR<Prisma.CampaignScalarRelationFilter, Prisma.CampaignWhereInput>
   results?: Prisma.ResultListRelationFilter
 }
@@ -238,6 +336,13 @@ export type KHSetOrderByWithRelationInput = {
   parentSetId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  totalScraped?: Prisma.SortOrder
+  qualified?: Prisma.SortOrder
+  missingEmail?: Prisma.SortOrder
+  enriched?: Prisma.SortOrder
+  leadPoolUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  extraStats?: Prisma.SortOrder
+  lastSyncedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   campaign?: Prisma.CampaignOrderByWithRelationInput
   results?: Prisma.ResultOrderByRelationAggregateInput
 }
@@ -257,6 +362,13 @@ export type KHSetWhereUniqueInput = Prisma.AtLeast<{
   parentSetId?: Prisma.StringNullableFilter<"KHSet"> | string | null
   createdAt?: Prisma.DateTimeFilter<"KHSet"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"KHSet"> | Date | string
+  totalScraped?: Prisma.IntFilter<"KHSet"> | number
+  qualified?: Prisma.IntFilter<"KHSet"> | number
+  missingEmail?: Prisma.IntFilter<"KHSet"> | number
+  enriched?: Prisma.IntFilter<"KHSet"> | number
+  leadPoolUrl?: Prisma.StringNullableFilter<"KHSet"> | string | null
+  extraStats?: Prisma.JsonFilter<"KHSet">
+  lastSyncedAt?: Prisma.DateTimeNullableFilter<"KHSet"> | Date | string | null
   campaign?: Prisma.XOR<Prisma.CampaignScalarRelationFilter, Prisma.CampaignWhereInput>
   results?: Prisma.ResultListRelationFilter
 }, "id">
@@ -273,9 +385,18 @@ export type KHSetOrderByWithAggregationInput = {
   parentSetId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  totalScraped?: Prisma.SortOrder
+  qualified?: Prisma.SortOrder
+  missingEmail?: Prisma.SortOrder
+  enriched?: Prisma.SortOrder
+  leadPoolUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  extraStats?: Prisma.SortOrder
+  lastSyncedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.KHSetCountOrderByAggregateInput
+  _avg?: Prisma.KHSetAvgOrderByAggregateInput
   _max?: Prisma.KHSetMaxOrderByAggregateInput
   _min?: Prisma.KHSetMinOrderByAggregateInput
+  _sum?: Prisma.KHSetSumOrderByAggregateInput
 }
 
 export type KHSetScalarWhereWithAggregatesInput = {
@@ -293,6 +414,13 @@ export type KHSetScalarWhereWithAggregatesInput = {
   parentSetId?: Prisma.StringNullableWithAggregatesFilter<"KHSet"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"KHSet"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"KHSet"> | Date | string
+  totalScraped?: Prisma.IntWithAggregatesFilter<"KHSet"> | number
+  qualified?: Prisma.IntWithAggregatesFilter<"KHSet"> | number
+  missingEmail?: Prisma.IntWithAggregatesFilter<"KHSet"> | number
+  enriched?: Prisma.IntWithAggregatesFilter<"KHSet"> | number
+  leadPoolUrl?: Prisma.StringNullableWithAggregatesFilter<"KHSet"> | string | null
+  extraStats?: Prisma.JsonWithAggregatesFilter<"KHSet">
+  lastSyncedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"KHSet"> | Date | string | null
 }
 
 export type KHSetCreateInput = {
@@ -306,6 +434,13 @@ export type KHSetCreateInput = {
   parentSetId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  totalScraped?: number
+  qualified?: number
+  missingEmail?: number
+  enriched?: number
+  leadPoolUrl?: string | null
+  extraStats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastSyncedAt?: Date | string | null
   campaign: Prisma.CampaignCreateNestedOneWithoutKhSetsInput
   results?: Prisma.ResultCreateNestedManyWithoutKhSetInput
 }
@@ -322,6 +457,13 @@ export type KHSetUncheckedCreateInput = {
   parentSetId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  totalScraped?: number
+  qualified?: number
+  missingEmail?: number
+  enriched?: number
+  leadPoolUrl?: string | null
+  extraStats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastSyncedAt?: Date | string | null
   results?: Prisma.ResultUncheckedCreateNestedManyWithoutKhSetInput
 }
 
@@ -336,6 +478,13 @@ export type KHSetUpdateInput = {
   parentSetId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
+  qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
+  enriched?: Prisma.IntFieldUpdateOperationsInput | number
+  leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extraStats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   campaign?: Prisma.CampaignUpdateOneRequiredWithoutKhSetsNestedInput
   results?: Prisma.ResultUpdateManyWithoutKhSetNestedInput
 }
@@ -352,6 +501,13 @@ export type KHSetUncheckedUpdateInput = {
   parentSetId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
+  qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
+  enriched?: Prisma.IntFieldUpdateOperationsInput | number
+  leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extraStats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   results?: Prisma.ResultUncheckedUpdateManyWithoutKhSetNestedInput
 }
 
@@ -367,6 +523,13 @@ export type KHSetCreateManyInput = {
   parentSetId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  totalScraped?: number
+  qualified?: number
+  missingEmail?: number
+  enriched?: number
+  leadPoolUrl?: string | null
+  extraStats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastSyncedAt?: Date | string | null
 }
 
 export type KHSetUpdateManyMutationInput = {
@@ -380,6 +543,13 @@ export type KHSetUpdateManyMutationInput = {
   parentSetId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
+  qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
+  enriched?: Prisma.IntFieldUpdateOperationsInput | number
+  leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extraStats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type KHSetUncheckedUpdateManyInput = {
@@ -394,6 +564,13 @@ export type KHSetUncheckedUpdateManyInput = {
   parentSetId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
+  qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
+  enriched?: Prisma.IntFieldUpdateOperationsInput | number
+  leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extraStats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type KHSetListRelationFilter = {
@@ -418,6 +595,20 @@ export type KHSetCountOrderByAggregateInput = {
   parentSetId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  totalScraped?: Prisma.SortOrder
+  qualified?: Prisma.SortOrder
+  missingEmail?: Prisma.SortOrder
+  enriched?: Prisma.SortOrder
+  leadPoolUrl?: Prisma.SortOrder
+  extraStats?: Prisma.SortOrder
+  lastSyncedAt?: Prisma.SortOrder
+}
+
+export type KHSetAvgOrderByAggregateInput = {
+  totalScraped?: Prisma.SortOrder
+  qualified?: Prisma.SortOrder
+  missingEmail?: Prisma.SortOrder
+  enriched?: Prisma.SortOrder
 }
 
 export type KHSetMaxOrderByAggregateInput = {
@@ -430,6 +621,12 @@ export type KHSetMaxOrderByAggregateInput = {
   parentSetId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  totalScraped?: Prisma.SortOrder
+  qualified?: Prisma.SortOrder
+  missingEmail?: Prisma.SortOrder
+  enriched?: Prisma.SortOrder
+  leadPoolUrl?: Prisma.SortOrder
+  lastSyncedAt?: Prisma.SortOrder
 }
 
 export type KHSetMinOrderByAggregateInput = {
@@ -442,6 +639,19 @@ export type KHSetMinOrderByAggregateInput = {
   parentSetId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  totalScraped?: Prisma.SortOrder
+  qualified?: Prisma.SortOrder
+  missingEmail?: Prisma.SortOrder
+  enriched?: Prisma.SortOrder
+  leadPoolUrl?: Prisma.SortOrder
+  lastSyncedAt?: Prisma.SortOrder
+}
+
+export type KHSetSumOrderByAggregateInput = {
+  totalScraped?: Prisma.SortOrder
+  qualified?: Prisma.SortOrder
+  missingEmail?: Prisma.SortOrder
+  enriched?: Prisma.SortOrder
 }
 
 export type KHSetScalarRelationFilter = {
@@ -534,6 +744,13 @@ export type KHSetCreateWithoutCampaignInput = {
   parentSetId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  totalScraped?: number
+  qualified?: number
+  missingEmail?: number
+  enriched?: number
+  leadPoolUrl?: string | null
+  extraStats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastSyncedAt?: Date | string | null
   results?: Prisma.ResultCreateNestedManyWithoutKhSetInput
 }
 
@@ -548,6 +765,13 @@ export type KHSetUncheckedCreateWithoutCampaignInput = {
   parentSetId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  totalScraped?: number
+  qualified?: number
+  missingEmail?: number
+  enriched?: number
+  leadPoolUrl?: string | null
+  extraStats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastSyncedAt?: Date | string | null
   results?: Prisma.ResultUncheckedCreateNestedManyWithoutKhSetInput
 }
 
@@ -592,6 +816,13 @@ export type KHSetScalarWhereInput = {
   parentSetId?: Prisma.StringNullableFilter<"KHSet"> | string | null
   createdAt?: Prisma.DateTimeFilter<"KHSet"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"KHSet"> | Date | string
+  totalScraped?: Prisma.IntFilter<"KHSet"> | number
+  qualified?: Prisma.IntFilter<"KHSet"> | number
+  missingEmail?: Prisma.IntFilter<"KHSet"> | number
+  enriched?: Prisma.IntFilter<"KHSet"> | number
+  leadPoolUrl?: Prisma.StringNullableFilter<"KHSet"> | string | null
+  extraStats?: Prisma.JsonFilter<"KHSet">
+  lastSyncedAt?: Prisma.DateTimeNullableFilter<"KHSet"> | Date | string | null
 }
 
 export type KHSetCreateWithoutResultsInput = {
@@ -605,6 +836,13 @@ export type KHSetCreateWithoutResultsInput = {
   parentSetId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  totalScraped?: number
+  qualified?: number
+  missingEmail?: number
+  enriched?: number
+  leadPoolUrl?: string | null
+  extraStats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastSyncedAt?: Date | string | null
   campaign: Prisma.CampaignCreateNestedOneWithoutKhSetsInput
 }
 
@@ -620,6 +858,13 @@ export type KHSetUncheckedCreateWithoutResultsInput = {
   parentSetId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  totalScraped?: number
+  qualified?: number
+  missingEmail?: number
+  enriched?: number
+  leadPoolUrl?: string | null
+  extraStats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastSyncedAt?: Date | string | null
 }
 
 export type KHSetCreateOrConnectWithoutResultsInput = {
@@ -649,6 +894,13 @@ export type KHSetUpdateWithoutResultsInput = {
   parentSetId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
+  qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
+  enriched?: Prisma.IntFieldUpdateOperationsInput | number
+  leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extraStats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   campaign?: Prisma.CampaignUpdateOneRequiredWithoutKhSetsNestedInput
 }
 
@@ -664,6 +916,13 @@ export type KHSetUncheckedUpdateWithoutResultsInput = {
   parentSetId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
+  qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
+  enriched?: Prisma.IntFieldUpdateOperationsInput | number
+  leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extraStats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type KHSetCreateManyCampaignInput = {
@@ -677,6 +936,13 @@ export type KHSetCreateManyCampaignInput = {
   parentSetId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  totalScraped?: number
+  qualified?: number
+  missingEmail?: number
+  enriched?: number
+  leadPoolUrl?: string | null
+  extraStats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastSyncedAt?: Date | string | null
 }
 
 export type KHSetUpdateWithoutCampaignInput = {
@@ -690,6 +956,13 @@ export type KHSetUpdateWithoutCampaignInput = {
   parentSetId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
+  qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
+  enriched?: Prisma.IntFieldUpdateOperationsInput | number
+  leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extraStats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   results?: Prisma.ResultUpdateManyWithoutKhSetNestedInput
 }
 
@@ -704,6 +977,13 @@ export type KHSetUncheckedUpdateWithoutCampaignInput = {
   parentSetId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
+  qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
+  enriched?: Prisma.IntFieldUpdateOperationsInput | number
+  leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extraStats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   results?: Prisma.ResultUncheckedUpdateManyWithoutKhSetNestedInput
 }
 
@@ -718,6 +998,13 @@ export type KHSetUncheckedUpdateManyWithoutCampaignInput = {
   parentSetId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
+  qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
+  enriched?: Prisma.IntFieldUpdateOperationsInput | number
+  leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extraStats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 
@@ -763,6 +1050,13 @@ export type KHSetSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   parentSetId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  totalScraped?: boolean
+  qualified?: boolean
+  missingEmail?: boolean
+  enriched?: boolean
+  leadPoolUrl?: boolean
+  extraStats?: boolean
+  lastSyncedAt?: boolean
   campaign?: boolean | Prisma.CampaignDefaultArgs<ExtArgs>
   results?: boolean | Prisma.KHSet$resultsArgs<ExtArgs>
   _count?: boolean | Prisma.KHSetCountOutputTypeDefaultArgs<ExtArgs>
@@ -780,6 +1074,13 @@ export type KHSetSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   parentSetId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  totalScraped?: boolean
+  qualified?: boolean
+  missingEmail?: boolean
+  enriched?: boolean
+  leadPoolUrl?: boolean
+  extraStats?: boolean
+  lastSyncedAt?: boolean
   campaign?: boolean | Prisma.CampaignDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["kHSet"]>
 
@@ -795,6 +1096,13 @@ export type KHSetSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   parentSetId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  totalScraped?: boolean
+  qualified?: boolean
+  missingEmail?: boolean
+  enriched?: boolean
+  leadPoolUrl?: boolean
+  extraStats?: boolean
+  lastSyncedAt?: boolean
   campaign?: boolean | Prisma.CampaignDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["kHSet"]>
 
@@ -810,9 +1118,16 @@ export type KHSetSelectScalar = {
   parentSetId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  totalScraped?: boolean
+  qualified?: boolean
+  missingEmail?: boolean
+  enriched?: boolean
+  leadPoolUrl?: boolean
+  extraStats?: boolean
+  lastSyncedAt?: boolean
 }
 
-export type KHSetOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "campaignId" | "keywords" | "hashtags" | "locked" | "status" | "platform" | "n8nExecutionId" | "parentSetId" | "createdAt" | "updatedAt", ExtArgs["result"]["kHSet"]>
+export type KHSetOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "campaignId" | "keywords" | "hashtags" | "locked" | "status" | "platform" | "n8nExecutionId" | "parentSetId" | "createdAt" | "updatedAt" | "totalScraped" | "qualified" | "missingEmail" | "enriched" | "leadPoolUrl" | "extraStats" | "lastSyncedAt", ExtArgs["result"]["kHSet"]>
 export type KHSetInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   campaign?: boolean | Prisma.CampaignDefaultArgs<ExtArgs>
   results?: boolean | Prisma.KHSet$resultsArgs<ExtArgs>
@@ -843,6 +1158,13 @@ export type $KHSetPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     parentSetId: string | null
     createdAt: Date
     updatedAt: Date
+    totalScraped: number
+    qualified: number
+    missingEmail: number
+    enriched: number
+    leadPoolUrl: string | null
+    extraStats: runtime.JsonValue
+    lastSyncedAt: Date | null
   }, ExtArgs["result"]["kHSet"]>
   composites: {}
 }
@@ -1279,6 +1601,13 @@ export interface KHSetFieldRefs {
   readonly parentSetId: Prisma.FieldRef<"KHSet", 'String'>
   readonly createdAt: Prisma.FieldRef<"KHSet", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"KHSet", 'DateTime'>
+  readonly totalScraped: Prisma.FieldRef<"KHSet", 'Int'>
+  readonly qualified: Prisma.FieldRef<"KHSet", 'Int'>
+  readonly missingEmail: Prisma.FieldRef<"KHSet", 'Int'>
+  readonly enriched: Prisma.FieldRef<"KHSet", 'Int'>
+  readonly leadPoolUrl: Prisma.FieldRef<"KHSet", 'String'>
+  readonly extraStats: Prisma.FieldRef<"KHSet", 'Json'>
+  readonly lastSyncedAt: Prisma.FieldRef<"KHSet", 'DateTime'>
 }
     
 

@@ -28,17 +28,23 @@ import {
   FlaskConical,
 } from "lucide-react";
 
-/* ── Configurable scouting pipeline steps ── */
+/* ── Configurable scouting pipeline steps ──
+ *  To add a new step:
+ *    - For a top-level DB column: { label, field, denominatorField? }
+ *    - For an extraStats key:     { label, field, denominatorField?, isExtra: true }
+ *  n8n pushes extraStats keys via POST /api/webhooks/n8n-stats-sync
+ */
 const SCOUTING_STEPS: {
   label: string;
-  field: keyof KHSet | null;
-  denominatorField?: keyof KHSet;
+  field: string | null;
+  denominatorField?: string;
+  isExtra?: boolean;
 }[] = [
   { label: "Scrape Lead Pool", field: "totalScraped" },
   { label: "Filter by Relevance", field: "qualified", denominatorField: "totalScraped" },
   { label: "Scrape Email", field: "missingEmail", denominatorField: "qualified" },
   { label: "Deeper Email Enrichment 1", field: "enriched", denominatorField: "qualified" },
-  { label: "Deeper Email Enrichment 2", field: null }, // no DB field yet
+  { label: "Deeper Email Enrichment 2", field: "enriched2", denominatorField: "qualified", isExtra: true },
 ];
 
 interface KHSet {
@@ -55,6 +61,7 @@ interface KHSet {
   missingEmail: number;
   enriched: number;
   leadPoolUrl: string | null;
+  extraStats: Record<string, number>;
   lastSyncedAt: string | null;
   results: {
     id: string;
@@ -383,8 +390,13 @@ export default function KHSetDetailPage() {
               {/* Right — scrollable step list */}
               <div className="max-h-64 overflow-y-auto pr-2 space-y-3">
                 {SCOUTING_STEPS.map((step) => {
-                  const value = step.field ? (set[step.field] as number) : null;
-                  const denom = step.denominatorField ? (set[step.denominatorField] as number) : null;
+                  const resolve = (key: string | undefined, extra?: boolean): number | null => {
+                    if (!key) return null;
+                    if (extra) return (set.extraStats as Record<string, number>)?.[key] ?? null;
+                    return (set as unknown as Record<string, unknown>)[key] as number ?? null;
+                  };
+                  const value = step.field ? resolve(step.field, step.isExtra) : null;
+                  const denom = step.denominatorField ? resolve(step.denominatorField) : null;
                   const hasValue = value !== null && value > 0;
 
                   return (
