@@ -364,7 +364,7 @@ export default function KHSetDetailPage() {
           )}
 
           {set.status === "processing" && (
-            <div className="flex items-center gap-8 py-6">
+            <div className="flex items-center justify-center gap-8 py-6">
               {/* Left — GIF */}
               <div className="flex-shrink-0 text-center">
                 <img
@@ -381,7 +381,7 @@ export default function KHSetDetailPage() {
               </div>
 
               {/* Right — scrollable step list */}
-              <div className="flex-1 max-h-64 overflow-y-auto pr-2 space-y-3">
+              <div className="max-h-64 overflow-y-auto pr-2 space-y-3">
                 {SCOUTING_STEPS.map((step) => {
                   const value = step.field ? (set[step.field] as number) : null;
                   const denom = step.denominatorField ? (set[step.denominatorField] as number) : null;
