@@ -9,14 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   ArrowLeft,
   Rocket,
   Sparkles,
@@ -24,8 +16,6 @@ import {
   X,
   Plus,
   ExternalLink,
-  ChevronDown,
-  ChevronUp,
   Users,
   UserCheck,
   MailX,
@@ -47,6 +37,12 @@ interface KHSet {
   platform: string | null;
   parentSetId: string | null;
   createdAt: string;
+  totalScraped: number;
+  qualified: number;
+  missingEmail: number;
+  enriched: number;
+  leadPoolUrl: string | null;
+  lastSyncedAt: string | null;
   results: {
     id: string;
     platform: string;
@@ -70,7 +66,7 @@ export default function KHSetDetailPage() {
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
-  const [showAllResults, setShowAllResults] = useState(false);
+
   const [testMode, setTestMode] = useState(false);
 
   const load = useCallback(async () => {
@@ -368,7 +364,7 @@ export default function KHSetDetailPage() {
                 }}
               />
               <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary mb-4 hidden" />
-              <p className="text-sm text-muted-foreground">This usually takes 2-5 minutes...</p>
+              <p className="text-sm text-muted-foreground">See the report below for updates.</p>
             </div>
           )}
 
@@ -423,214 +419,75 @@ export default function KHSetDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Report */}
-      {set.results.length > 0 && (() => {
-        const totalScraped = set.results.length;
-        const qualified = set.results.filter((r) => r.confidence === "high" || r.confidence === "medium");
-        const missingEmail = set.results.filter((r) => !r.email);
-        const enriched = set.results.filter((r) => r.emailSource === "enrichment");
-        const qualifiedPct = totalScraped > 0 ? Math.round((qualified.length / totalScraped) * 100) : 0;
-        const enrichmentRate = missingEmail.length > 0
-          ? Math.round((enriched.length / (missingEmail.length + enriched.length)) * 100)
-          : 100;
-
-        const top5 = [...set.results]
-          .sort((a, b) => (parseInt(b.followers || "0") || 0) - (parseInt(a.followers || "0") || 0))
-          .slice(0, 5);
-
-        return (
-          <div>
-            <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0 mb-4">
-              Report
-            </h2>
-            <p className="leading-7 text-muted-foreground mb-6">Summary of n8n workflow results.</p>
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-              <Card>
-                <CardContent className="pt-4 pb-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Total Scraped</p>
-                  </div>
-                  <p className="text-2xl font-bold">{totalScraped}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4 pb-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <UserCheck className="h-4 w-4 text-green-500" />
-                    <p className="text-sm text-muted-foreground">Qualified</p>
-                  </div>
-                  <p className="text-2xl font-bold">{qualified.length}</p>
-                  <p className="text-xs text-muted-foreground">{qualifiedPct}% of total</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4 pb-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <MailX className="h-4 w-4 text-orange-500" />
-                    <p className="text-sm text-muted-foreground">Missing Email</p>
-                  </div>
-                  <p className="text-2xl font-bold">{missingEmail.length}</p>
-                  <p className="text-xs text-muted-foreground">need enrichment</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4 pb-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <MailCheck className="h-4 w-4 text-blue-500" />
-                    <p className="text-sm text-muted-foreground">Enriched</p>
-                  </div>
-                  <p className="text-2xl font-bold">{enriched.length}</p>
-                  <p className="text-xs text-muted-foreground">{enrichmentRate}% success rate</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Top 5 Influencers */}
-            <h3 className="scroll-m-20 text-2xl font-semibold tracking-tight mb-3">Top 5 Influencers</h3>
-            <div className="rounded-lg border overflow-hidden mb-6">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="font-semibold w-8">#</TableHead>
-                    <TableHead className="font-semibold">Handle</TableHead>
-                    <TableHead className="font-semibold">Platform</TableHead>
-                    <TableHead className="font-semibold">Relevance</TableHead>
-                    <TableHead className="font-semibold text-right">Followers</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {top5.map((r, i) => (
-                    <TableRow key={r.id} className={i % 2 === 0 ? "" : "bg-muted/20"}>
-                      <TableCell className="text-sm text-muted-foreground font-medium">{i + 1}</TableCell>
-                      <TableCell>
-                        {r.profileUrl ? (
-                          <a
-                            href={r.profileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-                          >
-                            {r.creatorHandle || r.creatorName || "profile"}
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        ) : (
-                          <span className="text-sm font-medium">{r.creatorHandle || r.creatorName || "—"}</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{r.platform}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {r.confidence ? (
-                          <Badge
-                            variant={
-                              r.confidence === "high"
-                                ? "default"
-                                : r.confidence === "medium"
-                                ? "secondary"
-                                : "outline"
-                            }
-                          >
-                            {r.confidence}
-                          </Badge>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm font-medium text-right tabular-nums">
-                        {r.followers ? parseInt(r.followers).toLocaleString() : "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* All Results (collapsible) */}
-            <button
-              onClick={() => setShowAllResults(!showAllResults)}
-              className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-4"
+      {/* Report — visible during processing and completed */}
+      {(set.status === "processing" || set.status === "completed") && (
+        <div>
+          <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0 mb-4">
+            Report
+          </h2>
+          <div className="flex items-center justify-between mb-6">
+            <p className="leading-7 text-muted-foreground">
+              {set.lastSyncedAt
+                ? `Last synced ${new Date(set.lastSyncedAt).toLocaleString()}`
+                : "Pending sync from n8n"}
+            </p>
+            <a
+              href={set.leadPoolUrl || "https://docs.google.com/spreadsheets/d/1PCYrf6sfYWeAee9MtpoIlQf9IiRU008yME7039aBNkc/edit?gid=0#gid=0"}
+              target="_blank"
+              rel="noopener noreferrer"
             >
-              {showAllResults ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              {showAllResults ? "Hide" : "Show"} all {totalScraped} results
-            </button>
-            {showAllResults && (
-              <div className="rounded-lg border overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="font-semibold">Creator</TableHead>
-                      <TableHead className="font-semibold">Platform</TableHead>
-                      <TableHead className="font-semibold">Email</TableHead>
-                      <TableHead className="font-semibold">Source</TableHead>
-                      <TableHead className="font-semibold">Confidence</TableHead>
-                      <TableHead className="font-semibold text-right">Followers</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {set.results.map((r, i) => (
-                      <TableRow key={r.id} className={i % 2 === 0 ? "" : "bg-muted/20"}>
-                        <TableCell>
-                          <div>
-                            <p className="text-sm leading-none font-medium">
-                              {r.creatorName || r.creatorHandle}
-                            </p>
-                            {r.profileUrl && (
-                              <a
-                                href={r.profileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-1"
-                              >
-                                {r.creatorHandle || "profile"}
-                                <ExternalLink className="h-3 w-3" />
-                              </a>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{r.platform}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm">
-                            {r.email || "—"}
-                          </code>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {r.emailSource || "—"}
-                        </TableCell>
-                        <TableCell>
-                          {r.confidence ? (
-                            <Badge
-                              variant={
-                                r.confidence === "high"
-                                  ? "default"
-                                  : r.confidence === "medium"
-                                  ? "secondary"
-                                  : "outline"
-                              }
-                            >
-                              {r.confidence}
-                            </Badge>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm font-medium text-right tabular-nums">
-                          {r.followers ? parseInt(r.followers).toLocaleString() : "—"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+              <Button variant="outline" size="sm">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open Lead Pool
+              </Button>
+            </a>
           </div>
-        );
-      })()}
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+            <Card>
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Total Scraped</p>
+                </div>
+                <p className="text-2xl font-bold">{set.totalScraped || "—"}</p>
+                <p className="text-xs text-muted-foreground">Saved in Lead Pool</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <UserCheck className="h-4 w-4 text-green-500" />
+                  <p className="text-sm text-muted-foreground">Qualified</p>
+                </div>
+                <p className="text-2xl font-bold">{set.qualified || "—"}</p>
+                <p className="text-xs text-muted-foreground">Recorded in CRM</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <MailX className="h-4 w-4 text-orange-500" />
+                  <p className="text-sm text-muted-foreground">Missing Email</p>
+                </div>
+                <p className="text-2xl font-bold">{set.missingEmail || "—"}</p>
+                <p className="text-xs text-muted-foreground">Awaiting enrichment</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <MailCheck className="h-4 w-4 text-blue-500" />
+                  <p className="text-sm text-muted-foreground">Enriched</p>
+                </div>
+                <p className="text-2xl font-bold">{set.enriched || "—"}</p>
+                <p className="text-xs text-muted-foreground">Updated periodically</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

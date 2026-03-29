@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE "kh_set" ADD COLUMN     "enriched" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "lastSyncedAt" TIMESTAMP(3),
+ADD COLUMN     "leadPoolUrl" TEXT,
+ADD COLUMN     "missingEmail" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "qualified" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "totalScraped" INTEGER NOT NULL DEFAULT 0;

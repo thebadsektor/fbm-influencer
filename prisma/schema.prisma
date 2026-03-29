@@ -286,19 +286,27 @@ model Document {
 }
 
 model KHSet {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   campaignId     String
-  campaign       Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign       Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   keywords       String[]
   hashtags       String[]
-  locked         Boolean  @default(false)
-  status         String   @default("draft")
+  locked         Boolean   @default(false)
+  status         String    @default("draft")
   platform       String?
   n8nExecutionId String?
   results        Result[]
   parentSetId    String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Stats — updated by n8n scheduled sync workflow
+  totalScraped   Int       @default(0)
+  qualified      Int       @default(0)
+  missingEmail   Int       @default(0)
+  enriched       Int       @default(0)
+  leadPoolUrl    String?
+  lastSyncedAt   DateTime?
 
   @@map("kh_set")
 }
