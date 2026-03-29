@@ -34,14 +34,26 @@ import {
  *    - For an extraStats key:     { label, field, denominatorField?, isExtra: true }
  *  n8n pushes extraStats keys via POST /api/webhooks/n8n-stats-sync
  */
-const SCOUTING_STEPS: {
+type SubStat = { label: string; field?: string; isExtra?: boolean; compute?: (s: KHSet) => number };
+type ScoutingStep = {
   label: string;
   field: string | null;
   denominatorField?: string;
   isExtra?: boolean;
-}[] = [
+  subStats?: SubStat[];
+};
+
+const SCOUTING_STEPS: ScoutingStep[] = [
   { label: "Scrape Lead Pool", field: "totalScraped" },
-  { label: "Filter by Relevance", field: "qualified", denominatorField: "totalScraped" },
+  {
+    label: "Filter by Relevance",
+    field: "qualified",
+    subStats: [
+      { label: "Pool", compute: (s) => s.totalScraped - s.qualified - s.disqualified },
+      { label: "Relevant", field: "qualified" },
+      { label: "Irrelevant", field: "disqualified" },
+    ],
+  },
   { label: "Scrape Email", field: "missingEmail", denominatorField: "qualified" },
   { label: "Deeper Email Enrichment 1", field: "enriched", denominatorField: "qualified" },
   { label: "Deeper Email Enrichment 2", field: "enriched2", denominatorField: "qualified", isExtra: true },
@@ -58,6 +70,7 @@ interface KHSet {
   createdAt: string;
   totalScraped: number;
   qualified: number;
+  disqualified: number;
   missingEmail: number;
   enriched: number;
   leadPoolUrl: string | null;
@@ -397,15 +410,57 @@ export default function KHSetDetailPage() {
                   };
                   const value = step.field ? resolve(step.field, step.isExtra) : null;
                   const denom = step.denominatorField ? resolve(step.denominatorField) : null;
+
+                  // subStats: 3-part display like "Pool (45) | Relevant (3) | Irrelevant (2)"
+                  if (step.subStats) {
+                    const subValues = step.subStats.map((s) =>
+                      s.compute ? s.compute(set) : (resolve(s.field, s.isExtra) ?? 0)
+                    );
+                    const anyPopulated = subValues.some((v) => v > 0);
+
+                    return (
+                      <div key={step.label} className="flex items-center justify-end gap-3">
+                        <span className="text-sm font-semibold text-right">{step.label}</span>
+                        {anyPopulated ? (
+                          <span className="text-sm tabular-nums flex items-center gap-1.5">
+                            {step.subStats.map((s, i) => (
+                              <span key={s.label} className="flex items-center gap-1.5">
+                                {i > 0 && <span className="text-muted-foreground">|</span>}
+                                <span className="text-muted-foreground">{s.label}</span>
+                                <span className="font-bold text-green-500">({subValues[i]})</span>
+                              </span>
+                            ))}
+                          </span>
+                        ) : (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
+                    );
+                  }
+
                   const hasValue = value !== null && value > 0;
 
                   return (
                     <div key={step.label} className="flex items-center justify-end gap-3">
                       <span className="text-sm font-semibold text-right">{step.label}</span>
                       {hasValue ? (
-                        <span className="text-sm font-bold text-green-500 tabular-nums">
-                          ({denom && denom > 0 ? `${value}/${denom}` : value})
-                        </span>
+                        <>
+                          <span className="text-sm font-bold text-green-500 tabular-nums">
+                            ({denom && denom > 0 ? `${value}/${denom}` : value})
+                          </span>
+                          {step.field === "totalScraped" && (
+                            <a
+                              href={set.leadPoolUrl || "https://docs.google.com/spreadsheets/d/1PCYrf6sfYWeAee9MtpoIlQf9IiRU008yME7039aBNkc/edit?gid=0#gid=0"}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Button variant="outline" size="sm" className="h-6 px-2 text-xs">
+                                <ExternalLink className="h-3 w-3 mr-1" />
+                                Open Lead Pool
+                              </Button>
+                            </a>
+                          )}
+                        </>
                       ) : (
                         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                       )}
@@ -473,23 +528,11 @@ export default function KHSetDetailPage() {
           <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0 mb-4">
             Report
           </h2>
-          <div className="flex items-center justify-between mb-6">
-            <p className="leading-7 text-muted-foreground">
-              {set.lastSyncedAt
-                ? `Last synced ${new Date(set.lastSyncedAt).toLocaleString()}`
-                : "Pending sync from n8n"}
-            </p>
-            <a
-              href={set.leadPoolUrl || "https://docs.google.com/spreadsheets/d/1PCYrf6sfYWeAee9MtpoIlQf9IiRU008yME7039aBNkc/edit?gid=0#gid=0"}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="outline" size="sm">
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Open Lead Pool
-              </Button>
-            </a>
-          </div>
+          <p className="leading-7 text-muted-foreground mb-6">
+            {set.lastSyncedAt
+              ? `Last synced ${new Date(set.lastSyncedAt).toLocaleString()}`
+              : "Pending sync from n8n"}
+          </p>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">

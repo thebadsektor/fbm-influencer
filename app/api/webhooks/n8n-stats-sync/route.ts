@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  const { khSetId, totalScraped, qualified, missingEmail, enriched, leadPoolUrl, extraStats } =
+  const { khSetId, totalScraped, qualified, disqualified, missingEmail, enriched, leadPoolUrl, extraStats } =
     parsed.data;
 
   const set = await prisma.kHSet.findUnique({
@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
 
   if (totalScraped !== undefined) data.totalScraped = totalScraped;
   if (qualified !== undefined) data.qualified = qualified;
+  if (disqualified !== undefined) data.disqualified = disqualified;
   if (missingEmail !== undefined) data.missingEmail = missingEmail;
   if (enriched !== undefined) data.enriched = enriched;
   if (leadPoolUrl !== undefined) data.leadPoolUrl = leadPoolUrl;

@@ -88,12 +88,18 @@ export const n8nCallbackSchema = z.object({
 
 export const n8nStatsSyncSchema = z.object({
   khSetId: z.string().min(1, "Missing khSetId"),
-  totalScraped: z.number().int().nonnegative().optional(),
-  qualified: z.number().int().nonnegative().optional(),
-  missingEmail: z.number().int().nonnegative().optional(),
-  enriched: z.number().int().nonnegative().optional(),
+  totalScraped: z.coerce.number().int().nonnegative().optional(),
+  qualified: z.coerce.number().int().nonnegative().optional(),
+  disqualified: z.coerce.number().int().nonnegative().optional(),
+  missingEmail: z.coerce.number().int().nonnegative().optional(),
+  enriched: z.coerce.number().int().nonnegative().optional(),
   leadPoolUrl: z.string().url().optional(),
-  extraStats: z.record(z.string(), z.number().int().nonnegative()).optional(),
+  extraStats: z.record(z.string(), z.coerce.number().int().nonnegative()).optional(),
+});
+
+export const n8nRelevanceUpdateSchema = z.object({
+  khSetId: z.string().min(1, "Missing khSetId"),
+  qualified: z.boolean(),
 });
 
 // ── Helper ─────────────────────────────────────────────

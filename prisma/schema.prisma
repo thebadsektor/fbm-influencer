@@ -303,6 +303,7 @@ model KHSet {
   // Stats — updated by n8n scheduled sync workflow
   totalScraped   Int       @default(0)
   qualified      Int       @default(0)
+  disqualified   Int       @default(0)
   missingEmail   Int       @default(0)
   enriched       Int       @default(0)
   leadPoolUrl    String?
