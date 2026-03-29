@@ -355,12 +355,20 @@ export default function KHSetDetailPage() {
           )}
 
           {set.status === "processing" && (
-            <div className="text-center py-4">
-              <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary mb-4" />
-              <Button variant="outline" size="sm" onClick={handleReset}>
-                <CircleStop className="h-4 w-4 mr-2" />
-                Cancel
-              </Button>
+            <div className="text-center py-8">
+              {/* Replace src with your animated GIF path: /scouting.gif or similar */}
+              <img
+                src="/scouting-loading.gif"
+                alt="Scouting in progress"
+                className="h-32 w-32 mx-auto mb-4 rounded-lg"
+                onError={(e) => {
+                  // Fallback to spinner if GIF not found
+                  e.currentTarget.style.display = "none";
+                  e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                }}
+              />
+              <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary mb-4 hidden" />
+              <p className="text-sm text-muted-foreground">This usually takes 2-5 minutes...</p>
             </div>
           )}
 
