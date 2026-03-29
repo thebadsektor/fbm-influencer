@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import EmailDistribution from "@/components/email-distribution";
 import {
   ArrowLeft,
   Rocket,
@@ -578,6 +579,11 @@ export default function KHSetDetailPage() {
             </Card>
           </div>
         </div>
+      )}
+
+      {/* Email Distribution — visible during processing and completed */}
+      {(set.status === "processing" || set.status === "completed") && (
+        <EmailDistribution khSetId={set.id} />
       )}
     </div>
   );
