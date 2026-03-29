@@ -41,8 +41,9 @@ export async function verifyN8nRequest(req: NextRequest): Promise<VerifyResult> 
       };
     }
 
-    return { ok: true, body: JSON.parse(rawBody) };
+    return { ok: true, body: rawBody ? JSON.parse(rawBody) : null };
   }
 
-  return { ok: true, body: await req.json() };
+  const isGet = req.method === "GET";
+  return { ok: true, body: isGet ? null : await req.json() };
 }
