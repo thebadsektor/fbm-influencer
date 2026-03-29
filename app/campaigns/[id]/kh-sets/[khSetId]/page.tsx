@@ -28,6 +28,19 @@ import {
   FlaskConical,
 } from "lucide-react";
 
+/* ── Configurable scouting pipeline steps ── */
+const SCOUTING_STEPS: {
+  label: string;
+  field: keyof KHSet | null;
+  denominatorField?: keyof KHSet;
+}[] = [
+  { label: "Scrape Lead Pool", field: "totalScraped" },
+  { label: "Filter by Relevance", field: "qualified", denominatorField: "totalScraped" },
+  { label: "Scrape Email", field: "missingEmail", denominatorField: "qualified" },
+  { label: "Deeper Email Enrichment 1", field: "enriched", denominatorField: "qualified" },
+  { label: "Deeper Email Enrichment 2", field: null }, // no DB field yet
+];
+
 interface KHSet {
   id: string;
   keywords: string[];
@@ -351,20 +364,43 @@ export default function KHSetDetailPage() {
           )}
 
           {set.status === "processing" && (
-            <div className="text-center py-8">
-              {/* Replace src with your animated GIF path: /scouting.gif or similar */}
-              <img
-                src="/scouting-loading.gif"
-                alt="Scouting in progress"
-                className="h-32 w-32 mx-auto mb-4 rounded-lg"
-                onError={(e) => {
-                  // Fallback to spinner if GIF not found
-                  e.currentTarget.style.display = "none";
-                  e.currentTarget.nextElementSibling?.classList.remove("hidden");
-                }}
-              />
-              <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary mb-4 hidden" />
-              <p className="text-sm text-muted-foreground">See the report below for updates.</p>
+            <div className="flex items-center gap-8 py-6">
+              {/* Left — GIF */}
+              <div className="flex-shrink-0 text-center">
+                <img
+                  src="/scouting-loading.gif"
+                  alt="Scouting in progress"
+                  className="h-36 w-36 rounded-lg"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                    e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                  }}
+                />
+                <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary hidden" />
+                <p className="text-xs text-muted-foreground mt-2">See the report below for updates.</p>
+              </div>
+
+              {/* Right — scrollable step list */}
+              <div className="flex-1 max-h-64 overflow-y-auto pr-2 space-y-3">
+                {SCOUTING_STEPS.map((step) => {
+                  const value = step.field ? (set[step.field] as number) : null;
+                  const denom = step.denominatorField ? (set[step.denominatorField] as number) : null;
+                  const hasValue = value !== null && value > 0;
+
+                  return (
+                    <div key={step.label} className="flex items-center justify-end gap-3">
+                      <span className="text-sm font-semibold text-right">{step.label}</span>
+                      {hasValue ? (
+                        <span className="text-sm font-bold text-green-500 tabular-nums">
+                          ({denom && denom > 0 ? `${value}/${denom}` : value})
+                        </span>
+                      ) : (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
