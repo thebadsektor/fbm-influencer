@@ -19,7 +19,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     const isAuthPage = pathname?.startsWith("/auth");
 
     if (isAuthPage) {
-        return <main className="min-h-screen bg-background">{children}</main>;
+        return <main className="min-h-screen bg-background flex items-center justify-center">{children}</main>;
     }
 
     return (

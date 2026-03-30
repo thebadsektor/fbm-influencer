@@ -230,7 +230,7 @@ export default function EmailDistribution({ khSetId }: { khSetId: string }) {
 
       {/* ── Fullscreen modal ── */}
       <Dialog open={fullscreenOpen} onOpenChange={handleCloseFullscreen}>
-        <DialogContent className="w-[98vw] h-[95vh] max-w-none sm:max-w-none rounded-xl gap-0 p-0 flex flex-col">
+        <DialogContent showCloseButton={false} className="w-[98vw] h-[95vh] max-w-none sm:max-w-none rounded-xl gap-0 p-0 flex flex-col">
           {/* Modal header */}
           <DialogHeader className="px-6 pt-5 pb-3 border-b flex-shrink-0">
             <div className="flex items-center justify-between">
@@ -240,10 +240,15 @@ export default function EmailDistribution({ khSetId }: { khSetId: string }) {
                   {leads.length} leads with emails ready for outreach
                 </p>
               </div>
-              <Button onClick={handleGenerate} size="sm">
-                <Sparkles className="h-4 w-4 mr-2" />
-                Generate Emails
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button onClick={handleGenerate} size="sm">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Generate Emails
+                </Button>
+                <Button variant="ghost" size="icon-sm" onClick={() => handleCloseFullscreen(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </DialogHeader>
 
