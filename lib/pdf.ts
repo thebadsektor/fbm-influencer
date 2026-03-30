@@ -29,5 +29,5 @@ export async function extractPdfText(buffer: Buffer): Promise<string> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     pages.push(content.items.map((item: any) => item.str).join(" "));
   }
-  return pages.join("\n");
+  return pages.join("\n").replace(/\x00/g, "");
 }

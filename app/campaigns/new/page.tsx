@@ -215,6 +215,10 @@ export default function NewCampaignPage() {
       } else {
         router.push(`/campaigns/${campaign.id}`);
       }
+    } else {
+      const data = await res.json().catch(() => null);
+      setStatus("error");
+      setErrorMsg(data?.error || "Failed to create campaign. Please try again.");
     }
     setLoading(false);
   };

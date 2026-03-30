@@ -44,41 +44,50 @@ export async function POST(req: NextRequest) {
   }
 
   // Create campaign with optional document in a single transaction
-  const campaign = await prisma.$transaction(async (tx) => {
-    const c = await tx.campaign.create({
-      data: {
-        userId: user.id,
-        name: body.name,
-        marketingGoal: body.marketingGoal,
-        brandNiche: body.brandNiche,
-        targetAudienceAge: body.targetAudienceAge,
-        targetLocation: body.targetLocation,
-        audienceInterests: body.audienceInterests,
-        minFollowers: body.minFollowers,
-        minEngagementRate: body.minEngagementRate ?? 3,
-        numberOfInfluencers: body.numberOfInfluencers ?? 25,
-        targetKeywords: body.targetKeywords ?? 5,
-        targetHashtags: body.targetHashtags ?? 5,
-        trendingTopics: body.trendingTopics,
-        competitorBrands: body.competitorBrands,
-        additionalKeywords: body.additionalKeywords,
-      },
-    });
-
-    // If a document was analyzed during creation, attach it
-    if (body.documentContent && body.documentFilename) {
-      await tx.document.create({
+  let campaign;
+  try {
+    campaign = await prisma.$transaction(async (tx) => {
+      const c = await tx.campaign.create({
         data: {
-          campaignId: c.id,
-          filename: body.documentFilename,
-          mimeType: body.documentMimeType || "text/plain",
-          content: body.documentContent,
+          userId: user.id,
+          name: body.name,
+          marketingGoal: body.marketingGoal,
+          brandNiche: body.brandNiche,
+          targetAudienceAge: body.targetAudienceAge,
+          targetLocation: body.targetLocation,
+          audienceInterests: body.audienceInterests,
+          minFollowers: body.minFollowers,
+          minEngagementRate: body.minEngagementRate ?? 3,
+          numberOfInfluencers: body.numberOfInfluencers ?? 25,
+          targetKeywords: body.targetKeywords ?? 5,
+          targetHashtags: body.targetHashtags ?? 5,
+          trendingTopics: body.trendingTopics,
+          competitorBrands: body.competitorBrands,
+          additionalKeywords: body.additionalKeywords,
         },
       });
-    }
 
-    return c;
-  });
+      // If a document was analyzed during creation, attach it
+      if (body.documentContent && body.documentFilename) {
+        await tx.document.create({
+          data: {
+            campaignId: c.id,
+            filename: body.documentFilename,
+            mimeType: body.documentMimeType || "text/plain",
+            content: body.documentContent,
+          },
+        });
+      }
+
+      return c;
+    });
+  } catch (err) {
+    console.error("[campaign-create] Transaction failed:", err);
+    return NextResponse.json(
+      { error: "Failed to create campaign. Please try again." },
+      { status: 500 }
+    );
+  }
 
   // Auto-generate first KH set if a document was provided (outside transaction — LLM calls are slow)
   if (body.documentContent) {
