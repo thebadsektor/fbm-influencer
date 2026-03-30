@@ -13,6 +13,8 @@ import {
   Redo2,
   Send,
   Trash2,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 
@@ -34,6 +36,20 @@ export default function EmailComposer({
   const [subject, setSubject] = useState(initialSubject);
   const editorRef = useRef<HTMLDivElement>(null);
   const [, forceRender] = useState(0);
+  const [canvasTheme, setCanvasTheme] = useState<"light" | "dark">(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("email-composer-theme") as "light" | "dark") || "light";
+    }
+    return "light";
+  });
+
+  const toggleCanvasTheme = () => {
+    setCanvasTheme((prev) => {
+      const next = prev === "light" ? "dark" : "light";
+      localStorage.setItem("email-composer-theme", next);
+      return next;
+    });
+  };
 
   // Set initial content
   useEffect(() => {
@@ -132,15 +148,28 @@ export default function EmailComposer({
         >
           <Redo2 className="h-4 w-4" />
         </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="ml-auto"
+          onClick={toggleCanvasTheme}
+          title={canvasTheme === "light" ? "Switch to dark preview" : "Switch to light preview"}
+        >
+          {canvasTheme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+        </Button>
       </div>
 
       {/* Editor body — contentEditable */}
-      <div className="flex-1 overflow-y-auto">
+      <div className={`flex-1 overflow-y-auto transition-colors ${
+        canvasTheme === "light" ? "bg-white" : "bg-background"
+      }`}>
         <div
           ref={editorRef}
           contentEditable
           suppressContentEditableWarning
-          className="prose prose-sm dark:prose-invert max-w-none min-h-[300px] px-4 py-3 focus:outline-none text-sm"
+          className={`prose prose-sm max-w-none min-h-[300px] px-4 py-3 focus:outline-none text-sm ${
+            canvasTheme === "light" ? "text-gray-900 prose-headings:text-gray-900 prose-p:text-gray-900 prose-a:text-blue-600" : "prose-invert text-foreground"
+          }`}
           onInput={() => forceRender((n) => n + 1)}
         />
       </div>
