@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -85,7 +85,7 @@ function StatusMessage({ status, error, cached, onReanalyze }: { status: Analysi
   }
 }
 
-export default function NewCampaignPage() {
+function NewCampaignPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -675,5 +675,13 @@ export default function NewCampaignPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function NewCampaignPage() {
+  return (
+    <Suspense fallback={<div className="py-12 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-muted-foreground" /><p className="text-sm text-muted-foreground">Loading...</p></div>}>
+      <NewCampaignPageInner />
+    </Suspense>
   );
 }
