@@ -125,6 +125,11 @@ export type Campaign = Prisma.CampaignModel
  */
 export type Document = Prisma.DocumentModel
 /**
+ * Model DocumentAnalysisCache
+ * 
+ */
+export type DocumentAnalysisCache = Prisma.DocumentAnalysisCacheModel
+/**
  * Model KHSet
  * 
  */

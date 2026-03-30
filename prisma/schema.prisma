@@ -285,6 +285,19 @@ model Document {
   @@map("document")
 }
 
+model DocumentAnalysisCache {
+  id              String   @id @default(cuid())
+  filename        String
+  fileSize        Int
+  analysis        String   @db.Text
+  documentContent String   @db.Text
+  mimeType        String
+  createdAt       DateTime @default(now())
+
+  @@unique([filename, fileSize])
+  @@map("document_analysis_cache")
+}
+
 model KHSet {
   id             String    @id @default(cuid())
   campaignId     String

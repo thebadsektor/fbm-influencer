@@ -41,7 +41,7 @@ function getFileIcon(filename: string) {
   return <File className="h-4 w-4 text-muted-foreground" />;
 }
 
-function StatusMessage({ status, error }: { status: AnalysisStatus; error: string | null }) {
+function StatusMessage({ status, error, cached, onReanalyze }: { status: AnalysisStatus; error: string | null; cached?: boolean; onReanalyze?: () => void }) {
   switch (status) {
     case "analyzing":
       return (
@@ -54,7 +54,20 @@ function StatusMessage({ status, error }: { status: AnalysisStatus; error: strin
       return (
         <div className="flex items-center gap-2 text-sm text-green-500">
           <Check className="h-4 w-4" />
-          All fields auto-filled from document. Review and edit as needed.
+          {cached ? (
+            <>
+              Loaded from cache.{" "}
+              <button
+                type="button"
+                onClick={onReanalyze}
+                className="underline underline-offset-2 hover:text-green-400 transition-colors"
+              >
+                Re-analyze with AI
+              </button>
+            </>
+          ) : (
+            "All fields auto-filled from document. Review and edit as needed."
+          )}
         </div>
       );
     case "error":
@@ -95,6 +108,7 @@ export default function NewCampaignPage() {
   const [docFilename, setDocFilename] = useState<string | null>(null);
   const [docContent, setDocContent] = useState<string | null>(null);
   const [docMimeType, setDocMimeType] = useState<string | null>(null);
+  const [isCachedResult, setIsCachedResult] = useState(false);
 
   // Form state
   const [form, setForm] = useState({
@@ -145,15 +159,17 @@ export default function NewCampaignPage() {
   };
 
   // Manual analyze trigger
-  const handleAnalyze = async () => {
+  const handleAnalyze = async (reanalyze = false) => {
     if (!selectedFile) return;
 
     setErrorMsg(null);
+    setIsCachedResult(false);
     setStatus("analyzing");
 
     const fd = new FormData();
     fd.append("file", selectedFile);
     fd.append("provider", provider);
+    if (reanalyze) fd.append("reanalyze", "true");
 
     try {
       const res = await fetch("/api/analyze-document", { method: "POST", body: fd });
@@ -187,6 +203,7 @@ export default function NewCampaignPage() {
         additionalKeywords: a.additionalKeywords || prev.additionalKeywords,
       }));
 
+      setIsCachedResult(!!data.cached);
       setStatus("success");
     } catch (err) {
       setStatus("error");
@@ -306,7 +323,7 @@ export default function NewCampaignPage() {
           {selectedFile && !isAnalyzing && (
             <div className="flex gap-0">
               <Button
-                onClick={handleAnalyze}
+                onClick={() => handleAnalyze()}
                 disabled={isAnalyzing}
                 className="flex-1 rounded-r-none"
               >
@@ -348,7 +365,7 @@ export default function NewCampaignPage() {
 
           {/* Status line */}
           <div className="min-h-[24px]">
-            <StatusMessage status={status} error={errorMsg} />
+            <StatusMessage status={status} error={errorMsg} cached={isCachedResult} onReanalyze={() => handleAnalyze(true)} />
           </div>
         </CardContent>
       </Card>

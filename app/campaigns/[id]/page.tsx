@@ -145,7 +145,7 @@ export default function CampaignDetailPage() {
   const deleteCampaign = async () => {
     if (!window.confirm("Delete this campaign? This will also remove all documents, KH sets, and results.")) return;
     const res = await fetch(`/api/campaigns/${params.id}`, { method: "DELETE" });
-    if (res.ok) router.push("/");
+    if (res.ok) router.push("/campaigns");
   };
 
   const handleGenerate = async () => {

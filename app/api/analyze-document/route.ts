@@ -3,6 +3,7 @@ import { llmGenerate, parseJsonFromLLM, LLMProvider } from "@/lib/llm";
 import { extractPdfText } from "@/lib/pdf";
 import { getRequiredUser } from "@/lib/auth-helpers";
 import { resolveApiKey } from "@/lib/credential-resolver";
+import prisma from "@/lib/prisma";
 import {
   MARKETING_GOALS,
   AGE_RANGES,
@@ -16,6 +17,7 @@ export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
   const provider = (formData.get("provider") as LLMProvider) || "openai";
+  const reanalyze = formData.get("reanalyze") === "true";
 
   if (!file) return NextResponse.json({ error: "No file provided", errorType: "no_file" }, { status: 400 });
 
@@ -49,6 +51,26 @@ export async function POST(req: NextRequest) {
       { error: "Document appears to be empty or contains too little text.", errorType: "empty_document" },
       { status: 422 }
     );
+  }
+
+  // Check cache (skip if user requested re-analysis)
+  if (!reanalyze) {
+    try {
+      const cached = await prisma.documentAnalysisCache.findUnique({
+        where: { filename_fileSize: { filename: file.name, fileSize: buffer.length } },
+      });
+      if (cached) {
+        return NextResponse.json({
+          analysis: JSON.parse(cached.analysis),
+          documentContent: cached.documentContent,
+          documentFilename: file.name,
+          documentMimeType: cached.mimeType,
+          cached: true,
+        });
+      }
+    } catch (err) {
+      console.error("[analyze-document] Cache lookup failed:", err);
+    }
   }
 
   const truncated = content.slice(0, 15000);
@@ -111,6 +133,22 @@ Return ONLY valid JSON in this exact format, no other text:
       { status: 500 }
     );
   }
+
+  // Cache the result (fire-and-forget)
+  prisma.documentAnalysisCache.upsert({
+    where: { filename_fileSize: { filename: file.name, fileSize: buffer.length } },
+    create: {
+      filename: file.name,
+      fileSize: buffer.length,
+      analysis: JSON.stringify(parsed),
+      documentContent: content,
+      mimeType: file.type || "text/plain",
+    },
+    update: {
+      analysis: JSON.stringify(parsed),
+      documentContent: content,
+    },
+  }).catch(err => console.error("[analyze-document] Cache write failed:", err));
 
   return NextResponse.json({
     analysis: parsed,

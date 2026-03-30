@@ -401,6 +401,7 @@ export const ModelName = {
   Subscription: 'Subscription',
   Campaign: 'Campaign',
   Document: 'Document',
+  DocumentAnalysisCache: 'DocumentAnalysisCache',
   KHSet: 'KHSet',
   Result: 'Result',
   Credential: 'Credential'
@@ -419,7 +420,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "notification" | "discussion" | "discussionVote" | "discussionReport" | "discussionView" | "comment" | "commentVote" | "session" | "account" | "verification" | "feedback" | "feedbackReply" | "feedbackNotificationEmail" | "subscription" | "campaign" | "document" | "kHSet" | "result" | "credential"
+    modelProps: "user" | "notification" | "discussion" | "discussionVote" | "discussionReport" | "discussionView" | "comment" | "commentVote" | "session" | "account" | "verification" | "feedback" | "feedbackReply" | "feedbackNotificationEmail" | "subscription" | "campaign" | "document" | "documentAnalysisCache" | "kHSet" | "result" | "credential"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1681,6 +1682,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    DocumentAnalysisCache: {
+      payload: Prisma.$DocumentAnalysisCachePayload<ExtArgs>
+      fields: Prisma.DocumentAnalysisCacheFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.DocumentAnalysisCacheFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAnalysisCachePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.DocumentAnalysisCacheFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAnalysisCachePayload>
+        }
+        findFirst: {
+          args: Prisma.DocumentAnalysisCacheFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAnalysisCachePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.DocumentAnalysisCacheFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAnalysisCachePayload>
+        }
+        findMany: {
+          args: Prisma.DocumentAnalysisCacheFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAnalysisCachePayload>[]
+        }
+        create: {
+          args: Prisma.DocumentAnalysisCacheCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAnalysisCachePayload>
+        }
+        createMany: {
+          args: Prisma.DocumentAnalysisCacheCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.DocumentAnalysisCacheCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAnalysisCachePayload>[]
+        }
+        delete: {
+          args: Prisma.DocumentAnalysisCacheDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAnalysisCachePayload>
+        }
+        update: {
+          args: Prisma.DocumentAnalysisCacheUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAnalysisCachePayload>
+        }
+        deleteMany: {
+          args: Prisma.DocumentAnalysisCacheDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.DocumentAnalysisCacheUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.DocumentAnalysisCacheUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAnalysisCachePayload>[]
+        }
+        upsert: {
+          args: Prisma.DocumentAnalysisCacheUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAnalysisCachePayload>
+        }
+        aggregate: {
+          args: Prisma.DocumentAnalysisCacheAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateDocumentAnalysisCache>
+        }
+        groupBy: {
+          args: Prisma.DocumentAnalysisCacheGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DocumentAnalysisCacheGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.DocumentAnalysisCacheCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DocumentAnalysisCacheCountAggregateOutputType> | number
+        }
+      }
+    }
     KHSet: {
       payload: Prisma.$KHSetPayload<ExtArgs>
       fields: Prisma.KHSetFieldRefs
@@ -2187,6 +2262,19 @@ export const DocumentScalarFieldEnum = {
 export type DocumentScalarFieldEnum = (typeof DocumentScalarFieldEnum)[keyof typeof DocumentScalarFieldEnum]
 
 
+export const DocumentAnalysisCacheScalarFieldEnum = {
+  id: 'id',
+  filename: 'filename',
+  fileSize: 'fileSize',
+  analysis: 'analysis',
+  documentContent: 'documentContent',
+  mimeType: 'mimeType',
+  createdAt: 'createdAt'
+} as const
+
+export type DocumentAnalysisCacheScalarFieldEnum = (typeof DocumentAnalysisCacheScalarFieldEnum)[keyof typeof DocumentAnalysisCacheScalarFieldEnum]
+
+
 export const KHSetScalarFieldEnum = {
   id: 'id',
   campaignId: 'campaignId',
@@ -2201,6 +2289,7 @@ export const KHSetScalarFieldEnum = {
   updatedAt: 'updatedAt',
   totalScraped: 'totalScraped',
   qualified: 'qualified',
+  disqualified: 'disqualified',
   missingEmail: 'missingEmail',
   enriched: 'enriched',
   leadPoolUrl: 'leadPoolUrl',
@@ -2490,6 +2579,7 @@ export type GlobalOmitConfig = {
   subscription?: Prisma.SubscriptionOmit
   campaign?: Prisma.CampaignOmit
   document?: Prisma.DocumentOmit
+  documentAnalysisCache?: Prisma.DocumentAnalysisCacheOmit
   kHSet?: Prisma.KHSetOmit
   result?: Prisma.ResultOmit
   credential?: Prisma.CredentialOmit

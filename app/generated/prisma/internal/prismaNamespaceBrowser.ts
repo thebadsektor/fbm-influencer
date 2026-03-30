@@ -68,6 +68,7 @@ export const ModelName = {
   Subscription: 'Subscription',
   Campaign: 'Campaign',
   Document: 'Document',
+  DocumentAnalysisCache: 'DocumentAnalysisCache',
   KHSet: 'KHSet',
   Result: 'Result',
   Credential: 'Credential'
@@ -334,6 +335,19 @@ export const DocumentScalarFieldEnum = {
 export type DocumentScalarFieldEnum = (typeof DocumentScalarFieldEnum)[keyof typeof DocumentScalarFieldEnum]
 
 
+export const DocumentAnalysisCacheScalarFieldEnum = {
+  id: 'id',
+  filename: 'filename',
+  fileSize: 'fileSize',
+  analysis: 'analysis',
+  documentContent: 'documentContent',
+  mimeType: 'mimeType',
+  createdAt: 'createdAt'
+} as const
+
+export type DocumentAnalysisCacheScalarFieldEnum = (typeof DocumentAnalysisCacheScalarFieldEnum)[keyof typeof DocumentAnalysisCacheScalarFieldEnum]
+
+
 export const KHSetScalarFieldEnum = {
   id: 'id',
   campaignId: 'campaignId',
@@ -348,6 +362,7 @@ export const KHSetScalarFieldEnum = {
   updatedAt: 'updatedAt',
   totalScraped: 'totalScraped',
   qualified: 'qualified',
+  disqualified: 'disqualified',
   missingEmail: 'missingEmail',
   enriched: 'enriched',
   leadPoolUrl: 'leadPoolUrl',

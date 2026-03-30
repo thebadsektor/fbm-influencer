@@ -29,6 +29,7 @@ export type AggregateKHSet = {
 export type KHSetAvgAggregateOutputType = {
   totalScraped: number | null
   qualified: number | null
+  disqualified: number | null
   missingEmail: number | null
   enriched: number | null
 }
@@ -36,6 +37,7 @@ export type KHSetAvgAggregateOutputType = {
 export type KHSetSumAggregateOutputType = {
   totalScraped: number | null
   qualified: number | null
+  disqualified: number | null
   missingEmail: number | null
   enriched: number | null
 }
@@ -52,6 +54,7 @@ export type KHSetMinAggregateOutputType = {
   updatedAt: Date | null
   totalScraped: number | null
   qualified: number | null
+  disqualified: number | null
   missingEmail: number | null
   enriched: number | null
   leadPoolUrl: string | null
@@ -70,6 +73,7 @@ export type KHSetMaxAggregateOutputType = {
   updatedAt: Date | null
   totalScraped: number | null
   qualified: number | null
+  disqualified: number | null
   missingEmail: number | null
   enriched: number | null
   leadPoolUrl: string | null
@@ -90,6 +94,7 @@ export type KHSetCountAggregateOutputType = {
   updatedAt: number
   totalScraped: number
   qualified: number
+  disqualified: number
   missingEmail: number
   enriched: number
   leadPoolUrl: number
@@ -102,6 +107,7 @@ export type KHSetCountAggregateOutputType = {
 export type KHSetAvgAggregateInputType = {
   totalScraped?: true
   qualified?: true
+  disqualified?: true
   missingEmail?: true
   enriched?: true
 }
@@ -109,6 +115,7 @@ export type KHSetAvgAggregateInputType = {
 export type KHSetSumAggregateInputType = {
   totalScraped?: true
   qualified?: true
+  disqualified?: true
   missingEmail?: true
   enriched?: true
 }
@@ -125,6 +132,7 @@ export type KHSetMinAggregateInputType = {
   updatedAt?: true
   totalScraped?: true
   qualified?: true
+  disqualified?: true
   missingEmail?: true
   enriched?: true
   leadPoolUrl?: true
@@ -143,6 +151,7 @@ export type KHSetMaxAggregateInputType = {
   updatedAt?: true
   totalScraped?: true
   qualified?: true
+  disqualified?: true
   missingEmail?: true
   enriched?: true
   leadPoolUrl?: true
@@ -163,6 +172,7 @@ export type KHSetCountAggregateInputType = {
   updatedAt?: true
   totalScraped?: true
   qualified?: true
+  disqualified?: true
   missingEmail?: true
   enriched?: true
   leadPoolUrl?: true
@@ -271,6 +281,7 @@ export type KHSetGroupByOutputType = {
   updatedAt: Date
   totalScraped: number
   qualified: number
+  disqualified: number
   missingEmail: number
   enriched: number
   leadPoolUrl: string | null
@@ -315,6 +326,7 @@ export type KHSetWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"KHSet"> | Date | string
   totalScraped?: Prisma.IntFilter<"KHSet"> | number
   qualified?: Prisma.IntFilter<"KHSet"> | number
+  disqualified?: Prisma.IntFilter<"KHSet"> | number
   missingEmail?: Prisma.IntFilter<"KHSet"> | number
   enriched?: Prisma.IntFilter<"KHSet"> | number
   leadPoolUrl?: Prisma.StringNullableFilter<"KHSet"> | string | null
@@ -338,6 +350,7 @@ export type KHSetOrderByWithRelationInput = {
   updatedAt?: Prisma.SortOrder
   totalScraped?: Prisma.SortOrder
   qualified?: Prisma.SortOrder
+  disqualified?: Prisma.SortOrder
   missingEmail?: Prisma.SortOrder
   enriched?: Prisma.SortOrder
   leadPoolUrl?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -364,6 +377,7 @@ export type KHSetWhereUniqueInput = Prisma.AtLeast<{
   updatedAt?: Prisma.DateTimeFilter<"KHSet"> | Date | string
   totalScraped?: Prisma.IntFilter<"KHSet"> | number
   qualified?: Prisma.IntFilter<"KHSet"> | number
+  disqualified?: Prisma.IntFilter<"KHSet"> | number
   missingEmail?: Prisma.IntFilter<"KHSet"> | number
   enriched?: Prisma.IntFilter<"KHSet"> | number
   leadPoolUrl?: Prisma.StringNullableFilter<"KHSet"> | string | null
@@ -387,6 +401,7 @@ export type KHSetOrderByWithAggregationInput = {
   updatedAt?: Prisma.SortOrder
   totalScraped?: Prisma.SortOrder
   qualified?: Prisma.SortOrder
+  disqualified?: Prisma.SortOrder
   missingEmail?: Prisma.SortOrder
   enriched?: Prisma.SortOrder
   leadPoolUrl?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -416,6 +431,7 @@ export type KHSetScalarWhereWithAggregatesInput = {
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"KHSet"> | Date | string
   totalScraped?: Prisma.IntWithAggregatesFilter<"KHSet"> | number
   qualified?: Prisma.IntWithAggregatesFilter<"KHSet"> | number
+  disqualified?: Prisma.IntWithAggregatesFilter<"KHSet"> | number
   missingEmail?: Prisma.IntWithAggregatesFilter<"KHSet"> | number
   enriched?: Prisma.IntWithAggregatesFilter<"KHSet"> | number
   leadPoolUrl?: Prisma.StringNullableWithAggregatesFilter<"KHSet"> | string | null
@@ -436,6 +452,7 @@ export type KHSetCreateInput = {
   updatedAt?: Date | string
   totalScraped?: number
   qualified?: number
+  disqualified?: number
   missingEmail?: number
   enriched?: number
   leadPoolUrl?: string | null
@@ -459,6 +476,7 @@ export type KHSetUncheckedCreateInput = {
   updatedAt?: Date | string
   totalScraped?: number
   qualified?: number
+  disqualified?: number
   missingEmail?: number
   enriched?: number
   leadPoolUrl?: string | null
@@ -480,6 +498,7 @@ export type KHSetUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
   qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  disqualified?: Prisma.IntFieldUpdateOperationsInput | number
   missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
   enriched?: Prisma.IntFieldUpdateOperationsInput | number
   leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -503,6 +522,7 @@ export type KHSetUncheckedUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
   qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  disqualified?: Prisma.IntFieldUpdateOperationsInput | number
   missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
   enriched?: Prisma.IntFieldUpdateOperationsInput | number
   leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -525,6 +545,7 @@ export type KHSetCreateManyInput = {
   updatedAt?: Date | string
   totalScraped?: number
   qualified?: number
+  disqualified?: number
   missingEmail?: number
   enriched?: number
   leadPoolUrl?: string | null
@@ -545,6 +566,7 @@ export type KHSetUpdateManyMutationInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
   qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  disqualified?: Prisma.IntFieldUpdateOperationsInput | number
   missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
   enriched?: Prisma.IntFieldUpdateOperationsInput | number
   leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -566,6 +588,7 @@ export type KHSetUncheckedUpdateManyInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
   qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  disqualified?: Prisma.IntFieldUpdateOperationsInput | number
   missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
   enriched?: Prisma.IntFieldUpdateOperationsInput | number
   leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -597,6 +620,7 @@ export type KHSetCountOrderByAggregateInput = {
   updatedAt?: Prisma.SortOrder
   totalScraped?: Prisma.SortOrder
   qualified?: Prisma.SortOrder
+  disqualified?: Prisma.SortOrder
   missingEmail?: Prisma.SortOrder
   enriched?: Prisma.SortOrder
   leadPoolUrl?: Prisma.SortOrder
@@ -607,6 +631,7 @@ export type KHSetCountOrderByAggregateInput = {
 export type KHSetAvgOrderByAggregateInput = {
   totalScraped?: Prisma.SortOrder
   qualified?: Prisma.SortOrder
+  disqualified?: Prisma.SortOrder
   missingEmail?: Prisma.SortOrder
   enriched?: Prisma.SortOrder
 }
@@ -623,6 +648,7 @@ export type KHSetMaxOrderByAggregateInput = {
   updatedAt?: Prisma.SortOrder
   totalScraped?: Prisma.SortOrder
   qualified?: Prisma.SortOrder
+  disqualified?: Prisma.SortOrder
   missingEmail?: Prisma.SortOrder
   enriched?: Prisma.SortOrder
   leadPoolUrl?: Prisma.SortOrder
@@ -641,6 +667,7 @@ export type KHSetMinOrderByAggregateInput = {
   updatedAt?: Prisma.SortOrder
   totalScraped?: Prisma.SortOrder
   qualified?: Prisma.SortOrder
+  disqualified?: Prisma.SortOrder
   missingEmail?: Prisma.SortOrder
   enriched?: Prisma.SortOrder
   leadPoolUrl?: Prisma.SortOrder
@@ -650,6 +677,7 @@ export type KHSetMinOrderByAggregateInput = {
 export type KHSetSumOrderByAggregateInput = {
   totalScraped?: Prisma.SortOrder
   qualified?: Prisma.SortOrder
+  disqualified?: Prisma.SortOrder
   missingEmail?: Prisma.SortOrder
   enriched?: Prisma.SortOrder
 }
@@ -746,6 +774,7 @@ export type KHSetCreateWithoutCampaignInput = {
   updatedAt?: Date | string
   totalScraped?: number
   qualified?: number
+  disqualified?: number
   missingEmail?: number
   enriched?: number
   leadPoolUrl?: string | null
@@ -767,6 +796,7 @@ export type KHSetUncheckedCreateWithoutCampaignInput = {
   updatedAt?: Date | string
   totalScraped?: number
   qualified?: number
+  disqualified?: number
   missingEmail?: number
   enriched?: number
   leadPoolUrl?: string | null
@@ -818,6 +848,7 @@ export type KHSetScalarWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"KHSet"> | Date | string
   totalScraped?: Prisma.IntFilter<"KHSet"> | number
   qualified?: Prisma.IntFilter<"KHSet"> | number
+  disqualified?: Prisma.IntFilter<"KHSet"> | number
   missingEmail?: Prisma.IntFilter<"KHSet"> | number
   enriched?: Prisma.IntFilter<"KHSet"> | number
   leadPoolUrl?: Prisma.StringNullableFilter<"KHSet"> | string | null
@@ -838,6 +869,7 @@ export type KHSetCreateWithoutResultsInput = {
   updatedAt?: Date | string
   totalScraped?: number
   qualified?: number
+  disqualified?: number
   missingEmail?: number
   enriched?: number
   leadPoolUrl?: string | null
@@ -860,6 +892,7 @@ export type KHSetUncheckedCreateWithoutResultsInput = {
   updatedAt?: Date | string
   totalScraped?: number
   qualified?: number
+  disqualified?: number
   missingEmail?: number
   enriched?: number
   leadPoolUrl?: string | null
@@ -896,6 +929,7 @@ export type KHSetUpdateWithoutResultsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
   qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  disqualified?: Prisma.IntFieldUpdateOperationsInput | number
   missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
   enriched?: Prisma.IntFieldUpdateOperationsInput | number
   leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -918,6 +952,7 @@ export type KHSetUncheckedUpdateWithoutResultsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
   qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  disqualified?: Prisma.IntFieldUpdateOperationsInput | number
   missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
   enriched?: Prisma.IntFieldUpdateOperationsInput | number
   leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -938,6 +973,7 @@ export type KHSetCreateManyCampaignInput = {
   updatedAt?: Date | string
   totalScraped?: number
   qualified?: number
+  disqualified?: number
   missingEmail?: number
   enriched?: number
   leadPoolUrl?: string | null
@@ -958,6 +994,7 @@ export type KHSetUpdateWithoutCampaignInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
   qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  disqualified?: Prisma.IntFieldUpdateOperationsInput | number
   missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
   enriched?: Prisma.IntFieldUpdateOperationsInput | number
   leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -979,6 +1016,7 @@ export type KHSetUncheckedUpdateWithoutCampaignInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
   qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  disqualified?: Prisma.IntFieldUpdateOperationsInput | number
   missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
   enriched?: Prisma.IntFieldUpdateOperationsInput | number
   leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1000,6 +1038,7 @@ export type KHSetUncheckedUpdateManyWithoutCampaignInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   totalScraped?: Prisma.IntFieldUpdateOperationsInput | number
   qualified?: Prisma.IntFieldUpdateOperationsInput | number
+  disqualified?: Prisma.IntFieldUpdateOperationsInput | number
   missingEmail?: Prisma.IntFieldUpdateOperationsInput | number
   enriched?: Prisma.IntFieldUpdateOperationsInput | number
   leadPoolUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1052,6 +1091,7 @@ export type KHSetSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   updatedAt?: boolean
   totalScraped?: boolean
   qualified?: boolean
+  disqualified?: boolean
   missingEmail?: boolean
   enriched?: boolean
   leadPoolUrl?: boolean
@@ -1076,6 +1116,7 @@ export type KHSetSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   updatedAt?: boolean
   totalScraped?: boolean
   qualified?: boolean
+  disqualified?: boolean
   missingEmail?: boolean
   enriched?: boolean
   leadPoolUrl?: boolean
@@ -1098,6 +1139,7 @@ export type KHSetSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   updatedAt?: boolean
   totalScraped?: boolean
   qualified?: boolean
+  disqualified?: boolean
   missingEmail?: boolean
   enriched?: boolean
   leadPoolUrl?: boolean
@@ -1120,6 +1162,7 @@ export type KHSetSelectScalar = {
   updatedAt?: boolean
   totalScraped?: boolean
   qualified?: boolean
+  disqualified?: boolean
   missingEmail?: boolean
   enriched?: boolean
   leadPoolUrl?: boolean
@@ -1127,7 +1170,7 @@ export type KHSetSelectScalar = {
   lastSyncedAt?: boolean
 }
 
-export type KHSetOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "campaignId" | "keywords" | "hashtags" | "locked" | "status" | "platform" | "n8nExecutionId" | "parentSetId" | "createdAt" | "updatedAt" | "totalScraped" | "qualified" | "missingEmail" | "enriched" | "leadPoolUrl" | "extraStats" | "lastSyncedAt", ExtArgs["result"]["kHSet"]>
+export type KHSetOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "campaignId" | "keywords" | "hashtags" | "locked" | "status" | "platform" | "n8nExecutionId" | "parentSetId" | "createdAt" | "updatedAt" | "totalScraped" | "qualified" | "disqualified" | "missingEmail" | "enriched" | "leadPoolUrl" | "extraStats" | "lastSyncedAt", ExtArgs["result"]["kHSet"]>
 export type KHSetInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   campaign?: boolean | Prisma.CampaignDefaultArgs<ExtArgs>
   results?: boolean | Prisma.KHSet$resultsArgs<ExtArgs>
@@ -1160,6 +1203,7 @@ export type $KHSetPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     updatedAt: Date
     totalScraped: number
     qualified: number
+    disqualified: number
     missingEmail: number
     enriched: number
     leadPoolUrl: string | null
@@ -1603,6 +1647,7 @@ export interface KHSetFieldRefs {
   readonly updatedAt: Prisma.FieldRef<"KHSet", 'DateTime'>
   readonly totalScraped: Prisma.FieldRef<"KHSet", 'Int'>
   readonly qualified: Prisma.FieldRef<"KHSet", 'Int'>
+  readonly disqualified: Prisma.FieldRef<"KHSet", 'Int'>
   readonly missingEmail: Prisma.FieldRef<"KHSet", 'Int'>
   readonly enriched: Prisma.FieldRef<"KHSet", 'Int'>
   readonly leadPoolUrl: Prisma.FieldRef<"KHSet", 'String'>
