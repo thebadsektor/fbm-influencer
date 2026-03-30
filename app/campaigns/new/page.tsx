@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,10 @@ import {
   Check,
   AlertCircle,
   ChevronDown,
+  ShoppingBag,
+  X,
 } from "lucide-react";
+import { loadBasketById, type Basket } from "@/lib/basket";
 
 type AnalysisStatus = "idle" | "analyzing" | "success" | "error";
 
@@ -84,6 +87,7 @@ function StatusMessage({ status, error, cached, onReanalyze }: { status: Analysi
 
 export default function NewCampaignPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<AnalysisStatus>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -126,6 +130,44 @@ export default function NewCampaignPage() {
     trendingTopics: "",
     additionalKeywords: "",
   });
+
+  // Basket import
+  const [importedBasket, setImportedBasket] = useState<Basket | null>(null);
+  useEffect(() => {
+    const basketId = searchParams.get("basket");
+    if (!basketId) return;
+    const basket = loadBasketById(basketId);
+    if (!basket) return;
+    setImportedBasket(basket);
+
+    const keywords = basket.items
+      .filter((i) => i.type === "keyword")
+      .map((i) => i.label);
+    const hashtags = basket.items
+      .filter((i) => i.type === "hashtag")
+      .map((i) => i.label);
+    const influencers = basket.items
+      .filter((i) => i.type === "influencer")
+      .map((i) => i.label);
+    const topics = basket.items
+      .filter((i) => i.type === "topic")
+      .map((i) => i.label);
+
+    setForm((prev) => ({
+      ...prev,
+      additionalKeywords: [prev.additionalKeywords, ...keywords].filter(Boolean).join(", "),
+      trendingTopics: [prev.trendingTopics, ...topics, ...hashtags].filter(Boolean).join(", "),
+      name: prev.name || `${basket.name} Campaign`,
+    }));
+
+    // Store influencer names in competitorBrands-like field (shown in form)
+    if (influencers.length > 0) {
+      setForm((prev) => ({
+        ...prev,
+        brandNiche: prev.brandNiche || influencers.join(", "),
+      }));
+    }
+  }, [searchParams]);
 
   const toggleArray = (field: "targetLocation" | "audienceInterests", value: string) => {
     setForm((prev) => ({
@@ -251,6 +293,25 @@ export default function NewCampaignPage() {
         <ArrowLeft className="h-4 w-4" />
         Back to campaigns
       </Link>
+
+      {/* Basket Import Banner */}
+      {importedBasket && (
+        <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-primary/10 border border-primary/20 mb-6">
+          <div className="flex items-center gap-2 text-sm">
+            <ShoppingBag className="h-4 w-4 text-primary" />
+            <span>Imported from basket: <strong>{importedBasket.name}</strong> ({importedBasket.items.length} items)</span>
+          </div>
+          <button
+            onClick={() => {
+              setImportedBasket(null);
+              router.replace("/campaigns/new");
+            }}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <h1 className="scroll-m-20 text-4xl font-extrabold tracking-tight mb-2">New Campaign</h1>
       <p className="text-xl text-muted-foreground mb-8">

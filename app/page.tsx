@@ -16,6 +16,7 @@ import {
 import { SignedIn, SignedOut } from "@daveyplate/better-auth-ui";
 import { motion } from "framer-motion";
 import { saasMeta } from "@/lib/constants";
+import Dashboard from "@/components/dashboard/Dashboard";
 
 const features = [
     {
@@ -70,6 +71,11 @@ const itemVariants = {
 
 export default function LandingPage() {
     return (
+        <>
+        <SignedIn>
+            <Dashboard />
+        </SignedIn>
+        <SignedOut>
         <div className="flex flex-col gap-24 py-12 overflow-hidden font-sans selection:bg-primary/30">
             {/* Ambient Background */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1000px] pointer-events-none overflow-hidden -z-10">
@@ -348,5 +354,7 @@ export default function LandingPage() {
                 </div>
             </footer>
         </div>
+        </SignedOut>
+        </>
     );
 }
