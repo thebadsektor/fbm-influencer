@@ -17,18 +17,13 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
   X,
   Eye,
-  Mail,
-  Globe,
-  Users as UsersIcon,
-  TrendingUp,
-  Shield,
+  Maximize2,
 } from "lucide-react";
 import EmailComposer from "@/components/email-composer";
 
@@ -74,28 +69,104 @@ const MOCK_LEADS: Lead[] = [
 
 const PAGE_SIZE = 10;
 
+/* ── Draft status badge/button helper ── */
+function DraftCell({
+  lead,
+  onViewDraft,
+}: {
+  lead: Lead;
+  onViewDraft: (lead: Lead) => void;
+}) {
+  if (lead.draftStatus === "pending") {
+    return (
+      <Badge variant="outline" className="text-xs text-muted-foreground">
+        Pending
+      </Badge>
+    );
+  }
+  if (lead.draftStatus === "generated") {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-6 px-2 text-xs text-green-500 border-green-500/30 hover:bg-green-500/10"
+        onClick={(e) => {
+          e.stopPropagation();
+          onViewDraft(lead);
+        }}
+      >
+        <Eye className="h-3 w-3 mr-1" />
+        View Draft
+      </Button>
+    );
+  }
+  return (
+    <Badge className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30">
+      Sent
+    </Badge>
+  );
+}
+
+/* ── Pagination controls ── */
+function Pagination({
+  page,
+  totalPages,
+  setPage,
+}: {
+  page: number;
+  totalPages: number;
+  setPage: (fn: (p: number) => number) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between mt-3">
+      <p className="text-xs text-muted-foreground">
+        Page {page + 1} of {totalPages}
+      </p>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="icon-sm"
+          onClick={() => setPage((p) => Math.max(0, p - 1))}
+          disabled={page === 0}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+          disabled={page === totalPages - 1}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Main component ── */
 export default function EmailDistribution({ khSetId }: { khSetId: string }) {
   const [leads] = useState<Lead[]>(MOCK_LEADS);
   const [page, setPage] = useState(0);
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const [drawerLead, setDrawerLead] = useState<Lead | null>(null);
 
   const totalPages = Math.ceil(leads.length / PAGE_SIZE);
   const paginatedLeads = leads.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const drawerOpen = drawerLead !== null;
 
-  const openModal = (lead: Lead) => {
-    setSelectedLead(lead);
-    setModalOpen(true);
-  };
+  const openFullscreen = () => setFullscreenOpen(true);
 
-  const openDrawer = (lead: Lead) => {
+  const openDrawerInFullscreen = (lead: Lead) => {
     setDrawerLead(lead);
+    if (!fullscreenOpen) setFullscreenOpen(true);
   };
 
-  const closeDrawer = () => {
-    setDrawerLead(null);
+  const closeDrawer = () => setDrawerLead(null);
+
+  const handleCloseFullscreen = (open: boolean) => {
+    setFullscreenOpen(open);
+    if (!open) setDrawerLead(null);
   };
 
   const handleGenerate = () => {
@@ -104,7 +175,7 @@ export default function EmailDistribution({ khSetId }: { khSetId: string }) {
 
   return (
     <div>
-      {/* Section header */}
+      {/* ── Inline section header ── */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0">
@@ -114,221 +185,170 @@ export default function EmailDistribution({ khSetId }: { khSetId: string }) {
             {leads.length} leads with emails ready for outreach
           </p>
         </div>
-        <Button onClick={handleGenerate} size="sm">
-          <Sparkles className="h-4 w-4 mr-2" />
-          Generate Emails
-        </Button>
-      </div>
-
-      {/* Main layout — flex row for table + drawer */}
-      <div className="flex gap-4 transition-all duration-300">
-        {/* Table column */}
-        <div
-          className={`transition-all duration-300 ${
-            drawerOpen ? "w-1/3 min-w-0" : "w-full"
-          }`}
-        >
-          <div className="rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Creator</TableHead>
-                  {!drawerOpen && <TableHead>Email</TableHead>}
-                  <TableHead>Platform</TableHead>
-                  <TableHead className="text-right">Draft</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedLeads.map((lead) => (
-                  <TableRow
-                    key={lead.id}
-                    className={`cursor-pointer ${
-                      drawerLead?.id === lead.id ? "bg-muted" : ""
-                    }`}
-                    onClick={() => openModal(lead)}
-                  >
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-sm truncate">{lead.creatorName}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {lead.creatorHandle}
-                        </p>
-                      </div>
-                    </TableCell>
-                    {!drawerOpen && (
-                      <TableCell className="text-sm truncate max-w-[200px]">
-                        {lead.email}
-                      </TableCell>
-                    )}
-                    <TableCell>
-                      <Badge variant="secondary" className="text-xs">
-                        {lead.platform}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {lead.draftStatus === "pending" && (
-                        <Badge variant="outline" className="text-xs text-muted-foreground">
-                          Pending
-                        </Badge>
-                      )}
-                      {lead.draftStatus === "generated" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 px-2 text-xs text-green-500 border-green-500/30 hover:bg-green-500/10"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDrawer(lead);
-                          }}
-                        >
-                          <Eye className="h-3 w-3 mr-1" />
-                          View Draft
-                        </Button>
-                      )}
-                      {lead.draftStatus === "sent" && (
-                        <Badge className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30">
-                          Sent
-                        </Badge>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Pagination */}
-          <div className="flex items-center justify-between mt-3">
-            <p className="text-xs text-muted-foreground">
-              Page {page + 1} of {totalPages}
-            </p>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                disabled={page === totalPages - 1}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+        <div className="flex items-center gap-2">
+          <Button onClick={handleGenerate} size="sm">
+            <Sparkles className="h-4 w-4 mr-2" />
+            Generate Emails
+          </Button>
+          <Button variant="outline" size="icon-sm" onClick={openFullscreen} title="Fullscreen">
+            <Maximize2 className="h-4 w-4" />
+          </Button>
         </div>
-
-        {/* Drawer — email composer panel */}
-        {drawerOpen && drawerLead && (
-          <div className="w-2/3 border rounded-lg overflow-hidden animate-in slide-in-from-right-5 duration-300">
-            {/* Drawer header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
-              <div>
-                <p className="text-sm font-semibold">{drawerLead.creatorName}</p>
-                <p className="text-xs text-muted-foreground">{drawerLead.creatorHandle}</p>
-              </div>
-              <Button variant="ghost" size="icon-sm" onClick={closeDrawer}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Email composer */}
-            <EmailComposer
-              to="test@email.com"
-              subject={drawerLead.emailDraft?.subject || ""}
-              body={drawerLead.emailDraft?.body || ""}
-              onSend={() => alert(`Send email to ${drawerLead.email} (mock)`)}
-              onDiscard={closeDrawer}
-            />
-          </div>
-        )}
       </div>
 
-      {/* Full-screen lead detail modal */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-4xl w-[95vw]">
-          <DialogHeader>
-            <DialogTitle className="text-xl">
-              {selectedLead?.creatorName}
-              <span className="text-muted-foreground font-normal ml-2 text-base">
-                {selectedLead?.creatorHandle}
-              </span>
-            </DialogTitle>
-          </DialogHeader>
-          {selectedLead && (
-            <div className="grid grid-cols-2 gap-4 mt-2">
-              <DetailRow icon={<Mail className="h-4 w-4" />} label="Email" value={selectedLead.email} />
-              <DetailRow icon={<Globe className="h-4 w-4" />} label="Platform" value={selectedLead.platform} />
-              <DetailRow icon={<UsersIcon className="h-4 w-4" />} label="Followers" value={selectedLead.followers} />
-              <DetailRow icon={<TrendingUp className="h-4 w-4" />} label="Engagement Rate" value={selectedLead.engagementRate} />
-              <DetailRow icon={<Shield className="h-4 w-4" />} label="Confidence" value={selectedLead.confidence} />
-              <DetailRow icon={<Mail className="h-4 w-4" />} label="Email Source" value={selectedLead.emailSource} />
-              <div className="col-span-2">
-                <DetailRow
-                  icon={<Globe className="h-4 w-4" />}
-                  label="Profile URL"
-                  value={selectedLead.profileUrl}
-                  isLink
-                />
+      {/* ── Inline compact table (Creator, Platform, Draft) ── */}
+      <div className="rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Creator</TableHead>
+              <TableHead>Platform</TableHead>
+              <TableHead className="text-right">Draft</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedLeads.map((lead) => (
+              <TableRow key={lead.id}>
+                <TableCell>
+                  <div>
+                    <p className="font-medium text-sm truncate">{lead.creatorName}</p>
+                    <p className="text-xs text-muted-foreground truncate">{lead.creatorHandle}</p>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="secondary" className="text-xs">{lead.platform}</Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <DraftCell lead={lead} onViewDraft={openDrawerInFullscreen} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <Pagination page={page} totalPages={totalPages} setPage={setPage} />
+
+      {/* ── Fullscreen modal ── */}
+      <Dialog open={fullscreenOpen} onOpenChange={handleCloseFullscreen}>
+        <DialogContent className="w-[98vw] h-[95vh] max-w-none p-0 flex flex-col">
+          {/* Modal header */}
+          <DialogHeader className="px-6 pt-5 pb-3 border-b flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-xl">Email Distribution</DialogTitle>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {leads.length} leads with emails ready for outreach
+                </p>
               </div>
-              <div className="col-span-2">
-                <Separator />
-                <div className="flex items-center gap-2 mt-3">
-                  <span className="text-sm text-muted-foreground">Draft Status:</span>
-                  {selectedLead.draftStatus === "pending" && (
-                    <Badge variant="outline">Pending</Badge>
-                  )}
-                  {selectedLead.draftStatus === "generated" && (
-                    <Badge className="bg-green-500/20 text-green-400">Generated</Badge>
-                  )}
-                  {selectedLead.draftStatus === "sent" && (
-                    <Badge className="bg-blue-500/20 text-blue-400">Sent</Badge>
-                  )}
+              <Button onClick={handleGenerate} size="sm">
+                <Sparkles className="h-4 w-4 mr-2" />
+                Generate Emails
+              </Button>
+            </div>
+          </DialogHeader>
+
+          {/* Modal body — flex row for table + drawer */}
+          <div className="flex flex-1 min-h-0 overflow-hidden">
+            {/* Table panel */}
+            <div
+              className={`transition-all duration-300 flex flex-col ${
+                drawerOpen ? "w-1/3 min-w-0" : "w-full"
+              }`}
+            >
+              <div className="flex-1 overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="sticky top-0 bg-background z-10">Creator</TableHead>
+                      {!drawerOpen && (
+                        <>
+                          <TableHead className="sticky top-0 bg-background z-10">Email</TableHead>
+                          <TableHead className="sticky top-0 bg-background z-10">Platform</TableHead>
+                          <TableHead className="sticky top-0 bg-background z-10">Followers</TableHead>
+                          <TableHead className="sticky top-0 bg-background z-10">Engagement</TableHead>
+                        </>
+                      )}
+                      {drawerOpen && (
+                        <TableHead className="sticky top-0 bg-background z-10">Platform</TableHead>
+                      )}
+                      <TableHead className="sticky top-0 bg-background z-10 text-right">Draft</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedLeads.map((lead) => (
+                      <TableRow
+                        key={lead.id}
+                        className={`cursor-pointer ${
+                          drawerLead?.id === lead.id ? "bg-muted" : ""
+                        }`}
+                        onClick={() => {
+                          if (lead.draftStatus === "generated") openDrawerInFullscreen(lead);
+                        }}
+                      >
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-sm truncate">{lead.creatorName}</p>
+                            <p className="text-xs text-muted-foreground truncate">{lead.creatorHandle}</p>
+                          </div>
+                        </TableCell>
+                        {!drawerOpen && (
+                          <>
+                            <TableCell className="text-sm truncate max-w-[200px]">{lead.email}</TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="text-xs">{lead.platform}</Badge>
+                            </TableCell>
+                            <TableCell className="text-sm">{lead.followers}</TableCell>
+                            <TableCell className="text-sm">{lead.engagementRate}</TableCell>
+                          </>
+                        )}
+                        {drawerOpen && (
+                          <TableCell>
+                            <Badge variant="secondary" className="text-xs">{lead.platform}</Badge>
+                          </TableCell>
+                        )}
+                        <TableCell className="text-right">
+                          <DraftCell lead={lead} onViewDraft={openDrawerInFullscreen} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="px-4 py-2 border-t flex-shrink-0">
+                <Pagination page={page} totalPages={totalPages} setPage={setPage} />
+              </div>
+            </div>
+
+            {/* Drawer — email composer panel */}
+            {drawerOpen && drawerLead && (
+              <div className="w-2/3 border-l flex flex-col animate-in slide-in-from-right-5 duration-300">
+                {/* Drawer header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30 flex-shrink-0">
+                  <div>
+                    <p className="text-sm font-semibold">{drawerLead.creatorName}</p>
+                    <p className="text-xs text-muted-foreground">{drawerLead.creatorHandle}</p>
+                  </div>
+                  <Button variant="ghost" size="icon-sm" onClick={closeDrawer}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {/* Email composer */}
+                <div className="flex-1 overflow-y-auto">
+                  <EmailComposer
+                    key={drawerLead.id}
+                    to={drawerLead.email}
+                    subject={drawerLead.emailDraft?.subject || ""}
+                    body={drawerLead.emailDraft?.body || ""}
+                    onSend={() => alert(`Send email to ${drawerLead.email} (mock)`)}
+                    onDiscard={closeDrawer}
+                  />
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-/* ── Helper ── */
-function DetailRow({
-  icon,
-  label,
-  value,
-  isLink,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  isLink?: boolean;
-}) {
-  return (
-    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-      <div className="text-muted-foreground mt-0.5">{icon}</div>
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        {isLink ? (
-          <a
-            href={value}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-blue-400 hover:underline truncate block"
-          >
-            {value}
-          </a>
-        ) : (
-          <p className="text-sm font-medium">{value}</p>
-        )}
-      </div>
     </div>
   );
 }
