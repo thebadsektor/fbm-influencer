@@ -230,7 +230,7 @@ export default function EmailDistribution({ khSetId }: { khSetId: string }) {
 
       {/* ── Fullscreen modal ── */}
       <Dialog open={fullscreenOpen} onOpenChange={handleCloseFullscreen}>
-        <DialogContent className="w-[98vw] h-[95vh] max-w-none p-0 flex flex-col">
+        <DialogContent className="w-[98vw] h-[95vh] max-w-none sm:max-w-none rounded-xl gap-0 p-0 flex flex-col">
           {/* Modal header */}
           <DialogHeader className="px-6 pt-5 pb-3 border-b flex-shrink-0">
             <div className="flex items-center justify-between">
