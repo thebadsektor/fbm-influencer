@@ -27,7 +27,10 @@ import {
   Music2,
   Layers,
   FlaskConical,
+  ShoppingBag,
 } from "lucide-react";
+import ImportBasketDialog from "@/components/dashboard/ImportBasketDialog";
+import type { BasketItem } from "@/lib/basket";
 
 /* ── Configurable scouting pipeline steps ──
  *  To add a new step:
@@ -102,6 +105,8 @@ export default function KHSetDetailPage() {
   const [optimizing, setOptimizing] = useState(false);
 
   const [testMode, setTestMode] = useState(false);
+  const [importKwOpen, setImportKwOpen] = useState(false);
+  const [importHtOpen, setImportHtOpen] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch(
@@ -269,6 +274,9 @@ export default function KHSetDetailPage() {
               <Plus className="h-4 w-4 mr-1" />
               Add
             </Button>
+            <Button variant="outline" onClick={() => setImportKwOpen(true)} title="Import from basket">
+              <ShoppingBag className="h-4 w-4" />
+            </Button>
           </div>
         )}
       </div>
@@ -308,6 +316,9 @@ export default function KHSetDetailPage() {
             <Button variant="outline" onClick={addHashtag} disabled={saving}>
               <Plus className="h-4 w-4 mr-1" />
               Add
+            </Button>
+            <Button variant="outline" onClick={() => setImportHtOpen(true)} title="Import from basket">
+              <ShoppingBag className="h-4 w-4" />
             </Button>
           </div>
         )}
@@ -585,6 +596,33 @@ export default function KHSetDetailPage() {
       {(set.status === "processing" || set.status === "completed") && (
         <EmailDistribution khSetId={set.id} />
       )}
+
+      {/* Import Basket Dialogs */}
+      <ImportBasketDialog
+        open={importKwOpen}
+        onClose={() => setImportKwOpen(false)}
+        filterTypes={["keyword"]}
+        onImport={(items: BasketItem[]) => {
+          if (!set) return;
+          const newKws = items.map((i) => i.label);
+          const merged = [...new Set([...set.keywords, ...newKws])];
+          save(merged, set.hashtags);
+        }}
+      />
+      <ImportBasketDialog
+        open={importHtOpen}
+        onClose={() => setImportHtOpen(false)}
+        filterTypes={["hashtag"]}
+        onImport={(items: BasketItem[]) => {
+          if (!set) return;
+          const newHts = items.map((i) => {
+            const label = i.label;
+            return label.startsWith("#") ? label : `#${label}`;
+          });
+          const merged = [...new Set([...set.hashtags, ...newHts])];
+          save(set.keywords, merged);
+        }}
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { ThemedToaster } from "@/components/themed-toaster";
 
 const nunitoSans = Nunito_Sans({ variable: '--font-sans' });
 
@@ -40,6 +41,7 @@ export default function RootLayout({
             defaultTheme="system"
           // enableSystem
           >
+            <ThemedToaster />
             <AppLayout>
               {children}
             </AppLayout>

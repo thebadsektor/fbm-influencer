@@ -43,16 +43,33 @@ export async function POST(
   let maxHashtags = campaign.targetHashtags ?? 5;
   let provider: LLMProvider = "openai";
 
+  let body: Record<string, unknown> = {};
   try {
-    const body = await req.json();
-    if (body.minKeywords) minKeywords = Math.max(1, Math.min(50, body.minKeywords));
-    if (body.maxKeywords) maxKeywords = Math.max(1, Math.min(50, body.maxKeywords));
-    if (body.minHashtags) minHashtags = Math.max(1, Math.min(50, body.minHashtags));
-    if (body.maxHashtags) maxHashtags = Math.max(1, Math.min(50, body.maxHashtags));
-    if (body.provider) provider = body.provider;
+    body = await req.json();
   } catch {
     // No body or invalid JSON — use campaign defaults
   }
+
+  // Direct import from basket — skip LLM generation
+  if (body.importedKeywords || body.importedHashtags) {
+    const keywords = Array.isArray(body.importedKeywords) ? (body.importedKeywords as string[]) : [];
+    const hashtags = Array.isArray(body.importedHashtags) ? (body.importedHashtags as string[]) : [];
+    const khSet = await prisma.kHSet.create({
+      data: {
+        campaignId: id,
+        keywords,
+        hashtags,
+        status: "draft",
+      },
+    });
+    return NextResponse.json(khSet, { status: 201 });
+  }
+
+  if (body.minKeywords) minKeywords = Math.max(1, Math.min(50, body.minKeywords as number));
+  if (body.maxKeywords) maxKeywords = Math.max(1, Math.min(50, body.maxKeywords as number));
+  if (body.minHashtags) minHashtags = Math.max(1, Math.min(50, body.minHashtags as number));
+  if (body.maxHashtags) maxHashtags = Math.max(1, Math.min(50, body.maxHashtags as number));
+  if (body.provider) provider = body.provider as LLMProvider;
 
   // Ensure min <= max
   if (minKeywords > maxKeywords) maxKeywords = minKeywords;

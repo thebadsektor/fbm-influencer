@@ -23,7 +23,10 @@ import {
   ChevronDown,
   X,
   Trash2,
+  ShoppingBag,
 } from "lucide-react";
+import ImportBasketDialog from "@/components/dashboard/ImportBasketDialog";
+import type { BasketItem } from "@/lib/basket";
 
 const PROVIDERS: LLMProvider[] = ["openai", "anthropic", "gemini"];
 
@@ -67,6 +70,7 @@ export default function CampaignDetailPage() {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [importBasketOpen, setImportBasketOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -432,6 +436,15 @@ export default function CampaignDetailPage() {
                 )}
               </div>
             </div>
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full mt-3"
+              onClick={() => setImportBasketOpen(true)}
+            >
+              <ShoppingBag className="h-4 w-4 mr-2" />
+              Import from Basket
+            </Button>
           </CardContent>
         </Card>
 
@@ -474,6 +487,39 @@ export default function CampaignDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Import Basket Dialog */}
+      <ImportBasketDialog
+        open={importBasketOpen}
+        onClose={() => setImportBasketOpen(false)}
+        filterTypes={["keyword", "hashtag"]}
+        onImport={async (items: BasketItem[]) => {
+          const keywords = items.filter((i) => i.type === "keyword").map((i) => i.label);
+          const hashtags = items.filter((i) => i.type === "hashtag").map((i) => {
+            const label = i.label;
+            return label.startsWith("#") ? label : `#${label}`;
+          });
+          if (keywords.length === 0 && hashtags.length === 0) return;
+          // Create a new KH set with imported items
+          const res = await fetch(`/api/campaigns/${params.id}/kh-sets`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              minKeywords: keywords.length || 1,
+              maxKeywords: keywords.length || 1,
+              minHashtags: hashtags.length || 1,
+              maxHashtags: hashtags.length || 1,
+              provider,
+              importedKeywords: keywords,
+              importedHashtags: hashtags,
+            }),
+          });
+          if (res.ok) {
+            const set = await res.json();
+            router.push(`/campaigns/${campaign!.id}/kh-sets/${set.id}`);
+          }
+        }}
+      />
     </div>
   );
 }
