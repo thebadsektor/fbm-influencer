@@ -2,7 +2,7 @@ import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { generateKHSet } from "@/lib/kh-generator";
 import { LLMProvider } from "@/lib/llm";
-import { getRequiredUser } from "@/lib/auth-helpers";
+import { getRequiredUser, isAdmin } from "@/lib/auth-helpers";
 import { campaignCreateSchema, parseBody } from "@/lib/validations";
 import {
   SUBSCRIPTION_TIERS,
@@ -30,16 +30,18 @@ export async function POST(req: NextRequest) {
   }
   const body = parsed.data;
 
-  // Enforce campaign limit per tier
-  const tier = user.plan as SubscriptionTier;
-  const tierConfig = SUBSCRIPTION_TIERS[tier];
-  if (tierConfig.maxCampaigns !== -1) {
-    const count = await prisma.campaign.count({ where: { userId: user.id } });
-    if (count >= tierConfig.maxCampaigns) {
-      return NextResponse.json(
-        { error: `Campaign limit reached (${tierConfig.maxCampaigns} for ${tierConfig.label} plan). Upgrade to create more.` },
-        { status: 403 }
-      );
+  // Enforce campaign limit per tier (admins bypass all limits)
+  if (!isAdmin(user)) {
+    const tier = user.plan as SubscriptionTier;
+    const tierConfig = SUBSCRIPTION_TIERS[tier];
+    if (tierConfig.maxCampaigns !== -1) {
+      const count = await prisma.campaign.count({ where: { userId: user.id } });
+      if (count >= tierConfig.maxCampaigns) {
+        return NextResponse.json(
+          { error: `Campaign limit reached (${tierConfig.maxCampaigns} for ${tierConfig.label} plan). Upgrade to create more.` },
+          { status: 403 }
+        );
+      }
     }
   }
 

@@ -112,7 +112,7 @@ export default function LandingPage() {
                         transition={{ duration: 0.8, delay: 0.3 }}
                         className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed"
                     >
-                        Scout creators, generate smart keywords, and build influencer funnels — all powered by AI.
+                        Scout creators, generate smart keywords, and search for the right partners — all powered by AI.
                     </motion.p>
                 </div>
 
@@ -320,7 +320,7 @@ export default function LandingPage() {
                             {saasMeta.name}
                         </div>
                         <p className="text-muted-foreground text-sm max-w-sm leading-relaxed font-medium">
-                            AI-powered influencer scouting platform. Find creators, generate keywords, and build your funnel.
+                            AI-powered influencer scouting platform. Find creators, generate keywords, and discover your next partner.
                         </p>
                     </div>
                     <div className="space-y-6">

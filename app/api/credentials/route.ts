@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { getRequiredUser } from "@/lib/auth-helpers";
+import { getRequiredUser, isAdmin } from "@/lib/auth-helpers";
 import { encrypt } from "@/lib/crypto";
 import {
   SUBSCRIPTION_TIERS,
@@ -28,10 +28,12 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
-    // Platform credentials available to user's tier
+    // Platform credentials available to user's tier (admins see all)
     const tier = user.plan as SubscriptionTier;
     const tierConfig = SUBSCRIPTION_TIERS[tier];
-    const allowedProviders = tierConfig?.platformLlmProviders ?? [];
+    const allowedProviders: readonly string[] = isAdmin(user)
+      ? ["anthropic", "openai", "gemini"]
+      : (tierConfig?.platformLlmProviders ?? []);
 
     let platformCreds: typeof userCreds = [];
     if (allowedProviders.length > 0) {

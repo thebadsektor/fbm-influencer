@@ -53,3 +53,11 @@ export async function requireRole(...roles: string[]): Promise<AppUser> {
   }
   return user;
 }
+
+/**
+ * Check if a user is an admin (or super-admin).
+ * Used to bypass subscription limits for internal accounts.
+ */
+export function isAdmin(user: { role: string }): boolean {
+  return user.role === "admin" || user.role === "super-admin";
+}

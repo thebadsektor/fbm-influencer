@@ -1,6 +1,6 @@
-# Influencer Funnel Builder
+# Influencer Search
 
-AI-powered influencer scouting platform. Find creators, generate smart keywords, and build influencer funnels — built with Next.js, Better Auth, Prisma, and Stripe.
+AI-powered influencer scouting platform. Find creators, generate smart keywords, and search for the right partners — built with Next.js, Better Auth, Prisma, and Stripe.
 
 ## Tech Stack
 

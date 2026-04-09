@@ -37,7 +37,24 @@ export async function resolveApiKey(
     return decrypt(userCred.encryptedValue, userCred.iv, userCred.authTag);
   }
 
-  // 2. Determine user's plan via Stripe subscriptions
+  // 2. Admin bypass — admins can use any active platform provider unconditionally
+  const dbUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+  if (dbUser?.role === "admin" || dbUser?.role === "super-admin") {
+    const platformCred = await prisma.credential.findFirst({
+      where: { provider, isPlatform: true, isActive: true },
+    });
+    if (!platformCred) throw new CredentialNotFoundError(provider);
+    return decrypt(
+      platformCred.encryptedValue,
+      platformCred.iv,
+      platformCred.authTag
+    );
+  }
+
+  // 3. Determine user's plan via Stripe subscriptions
   let plan: string = "free";
   try {
     const subscriptions = await auth.api.listActiveSubscriptions({
@@ -59,7 +76,7 @@ export async function resolveApiKey(
     throw new CredentialNotFoundError(provider);
   }
 
-  // 3. Fetch the platform credential
+  // 4. Fetch the platform credential
   const platformCred = await prisma.credential.findFirst({
     where: { provider, isPlatform: true, isActive: true },
   });
