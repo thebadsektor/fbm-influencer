@@ -32,10 +32,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, status: "failed" });
   }
 
+  // Filter out known test/placeholder accounts
+  const TEST_HANDLES = new Set(["n8ntest", "echobot"]);
+  const cleanResults = Array.isArray(results)
+    ? results.filter((r) => {
+        const rec = r as Record<string, unknown>;
+        const handle = String(rec.creatorHandle || rec.handle || rec.username || "")
+          .replace(/^@/, "").toLowerCase();
+        return !TEST_HANDLES.has(handle);
+      })
+    : [];
+
   // Store results
-  const newResultCount = Array.isArray(results) ? results.length : 0;
-  if (Array.isArray(results)) {
-    for (const r of results) {
+  const newResultCount = cleanResults.length;
+  if (cleanResults.length > 0) {
+    for (const r of cleanResults) {
       const rec = r as Record<string, unknown>;
       await prisma.result.create({
         data: {

@@ -17,7 +17,28 @@ export async function GET(_req: NextRequest, { params }: Params) {
     include: { results: { orderBy: { createdAt: "desc" } } },
   });
   if (!set) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(set);
+
+  // Include campaign status and iteration intelligence
+  const iteration = await prisma.campaignIteration.findFirst({
+    where: { khSetId },
+  });
+
+  return NextResponse.json({
+    ...set,
+    campaignStatus: campaign?.status,
+    iteration: iteration ? {
+      profiledCount: iteration.profiledCount,
+      skippedCount: iteration.skippedCount,
+      avgFitScore: iteration.avgFitScore,
+      profilingCost: iteration.profilingCost,
+      profilingDuration: iteration.profilingDuration,
+      discoveryDuration: iteration.discoveryDuration,
+      analysisNarrative: iteration.analysisNarrative,
+      strategyForNext: iteration.strategyForNext,
+      learnings: iteration.learnings,
+      topPerformingKeywords: iteration.topPerformingKeywords,
+    } : null,
+  });
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {

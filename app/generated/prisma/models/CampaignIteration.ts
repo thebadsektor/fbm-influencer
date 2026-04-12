@@ -34,6 +34,7 @@ export type CampaignIterationAvgAggregateOutputType = {
   avgFitScore: number | null
   profilingCost: number | null
   profilingDuration: number | null
+  discoveryDuration: number | null
 }
 
 export type CampaignIterationSumAggregateOutputType = {
@@ -44,6 +45,7 @@ export type CampaignIterationSumAggregateOutputType = {
   avgFitScore: number | null
   profilingCost: number | null
   profilingDuration: number | null
+  discoveryDuration: number | null
 }
 
 export type CampaignIterationMinAggregateOutputType = {
@@ -60,6 +62,7 @@ export type CampaignIterationMinAggregateOutputType = {
   strategyForNext: string | null
   profilingCost: number | null
   profilingDuration: number | null
+  discoveryDuration: number | null
   createdAt: Date | null
 }
 
@@ -77,6 +80,7 @@ export type CampaignIterationMaxAggregateOutputType = {
   strategyForNext: string | null
   profilingCost: number | null
   profilingDuration: number | null
+  discoveryDuration: number | null
   createdAt: Date | null
 }
 
@@ -102,6 +106,7 @@ export type CampaignIterationCountAggregateOutputType = {
   learnings: number
   profilingCost: number
   profilingDuration: number
+  discoveryDuration: number
   createdAt: number
   _all: number
 }
@@ -115,6 +120,7 @@ export type CampaignIterationAvgAggregateInputType = {
   avgFitScore?: true
   profilingCost?: true
   profilingDuration?: true
+  discoveryDuration?: true
 }
 
 export type CampaignIterationSumAggregateInputType = {
@@ -125,6 +131,7 @@ export type CampaignIterationSumAggregateInputType = {
   avgFitScore?: true
   profilingCost?: true
   profilingDuration?: true
+  discoveryDuration?: true
 }
 
 export type CampaignIterationMinAggregateInputType = {
@@ -141,6 +148,7 @@ export type CampaignIterationMinAggregateInputType = {
   strategyForNext?: true
   profilingCost?: true
   profilingDuration?: true
+  discoveryDuration?: true
   createdAt?: true
 }
 
@@ -158,6 +166,7 @@ export type CampaignIterationMaxAggregateInputType = {
   strategyForNext?: true
   profilingCost?: true
   profilingDuration?: true
+  discoveryDuration?: true
   createdAt?: true
 }
 
@@ -183,6 +192,7 @@ export type CampaignIterationCountAggregateInputType = {
   learnings?: true
   profilingCost?: true
   profilingDuration?: true
+  discoveryDuration?: true
   createdAt?: true
   _all?: true
 }
@@ -295,6 +305,7 @@ export type CampaignIterationGroupByOutputType = {
   learnings: string[]
   profilingCost: number | null
   profilingDuration: number | null
+  discoveryDuration: number | null
   createdAt: Date
   _count: CampaignIterationCountAggregateOutputType | null
   _avg: CampaignIterationAvgAggregateOutputType | null
@@ -343,6 +354,7 @@ export type CampaignIterationWhereInput = {
   learnings?: Prisma.StringNullableListFilter<"CampaignIteration">
   profilingCost?: Prisma.FloatNullableFilter<"CampaignIteration"> | number | null
   profilingDuration?: Prisma.IntNullableFilter<"CampaignIteration"> | number | null
+  discoveryDuration?: Prisma.IntNullableFilter<"CampaignIteration"> | number | null
   createdAt?: Prisma.DateTimeFilter<"CampaignIteration"> | Date | string
   campaign?: Prisma.XOR<Prisma.CampaignScalarRelationFilter, Prisma.CampaignWhereInput>
 }
@@ -369,6 +381,7 @@ export type CampaignIterationOrderByWithRelationInput = {
   learnings?: Prisma.SortOrder
   profilingCost?: Prisma.SortOrderInput | Prisma.SortOrder
   profilingDuration?: Prisma.SortOrderInput | Prisma.SortOrder
+  discoveryDuration?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   campaign?: Prisma.CampaignOrderByWithRelationInput
 }
@@ -399,6 +412,7 @@ export type CampaignIterationWhereUniqueInput = Prisma.AtLeast<{
   learnings?: Prisma.StringNullableListFilter<"CampaignIteration">
   profilingCost?: Prisma.FloatNullableFilter<"CampaignIteration"> | number | null
   profilingDuration?: Prisma.IntNullableFilter<"CampaignIteration"> | number | null
+  discoveryDuration?: Prisma.IntNullableFilter<"CampaignIteration"> | number | null
   createdAt?: Prisma.DateTimeFilter<"CampaignIteration"> | Date | string
   campaign?: Prisma.XOR<Prisma.CampaignScalarRelationFilter, Prisma.CampaignWhereInput>
 }, "id" | "campaignId_iterationNumber">
@@ -425,6 +439,7 @@ export type CampaignIterationOrderByWithAggregationInput = {
   learnings?: Prisma.SortOrder
   profilingCost?: Prisma.SortOrderInput | Prisma.SortOrder
   profilingDuration?: Prisma.SortOrderInput | Prisma.SortOrder
+  discoveryDuration?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.CampaignIterationCountOrderByAggregateInput
   _avg?: Prisma.CampaignIterationAvgOrderByAggregateInput
@@ -458,6 +473,7 @@ export type CampaignIterationScalarWhereWithAggregatesInput = {
   learnings?: Prisma.StringNullableListFilter<"CampaignIteration">
   profilingCost?: Prisma.FloatNullableWithAggregatesFilter<"CampaignIteration"> | number | null
   profilingDuration?: Prisma.IntNullableWithAggregatesFilter<"CampaignIteration"> | number | null
+  discoveryDuration?: Prisma.IntNullableWithAggregatesFilter<"CampaignIteration"> | number | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"CampaignIteration"> | Date | string
 }
 
@@ -482,6 +498,7 @@ export type CampaignIterationCreateInput = {
   learnings?: Prisma.CampaignIterationCreatelearningsInput | string[]
   profilingCost?: number | null
   profilingDuration?: number | null
+  discoveryDuration?: number | null
   createdAt?: Date | string
   campaign: Prisma.CampaignCreateNestedOneWithoutIterationsInput
 }
@@ -508,6 +525,7 @@ export type CampaignIterationUncheckedCreateInput = {
   learnings?: Prisma.CampaignIterationCreatelearningsInput | string[]
   profilingCost?: number | null
   profilingDuration?: number | null
+  discoveryDuration?: number | null
   createdAt?: Date | string
 }
 
@@ -532,6 +550,7 @@ export type CampaignIterationUpdateInput = {
   learnings?: Prisma.CampaignIterationUpdatelearningsInput | string[]
   profilingCost?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profilingDuration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  discoveryDuration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   campaign?: Prisma.CampaignUpdateOneRequiredWithoutIterationsNestedInput
 }
@@ -558,6 +577,7 @@ export type CampaignIterationUncheckedUpdateInput = {
   learnings?: Prisma.CampaignIterationUpdatelearningsInput | string[]
   profilingCost?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profilingDuration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  discoveryDuration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -583,6 +603,7 @@ export type CampaignIterationCreateManyInput = {
   learnings?: Prisma.CampaignIterationCreatelearningsInput | string[]
   profilingCost?: number | null
   profilingDuration?: number | null
+  discoveryDuration?: number | null
   createdAt?: Date | string
 }
 
@@ -607,6 +628,7 @@ export type CampaignIterationUpdateManyMutationInput = {
   learnings?: Prisma.CampaignIterationUpdatelearningsInput | string[]
   profilingCost?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profilingDuration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  discoveryDuration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -632,6 +654,7 @@ export type CampaignIterationUncheckedUpdateManyInput = {
   learnings?: Prisma.CampaignIterationUpdatelearningsInput | string[]
   profilingCost?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profilingDuration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  discoveryDuration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -672,6 +695,7 @@ export type CampaignIterationCountOrderByAggregateInput = {
   learnings?: Prisma.SortOrder
   profilingCost?: Prisma.SortOrder
   profilingDuration?: Prisma.SortOrder
+  discoveryDuration?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -683,6 +707,7 @@ export type CampaignIterationAvgOrderByAggregateInput = {
   avgFitScore?: Prisma.SortOrder
   profilingCost?: Prisma.SortOrder
   profilingDuration?: Prisma.SortOrder
+  discoveryDuration?: Prisma.SortOrder
 }
 
 export type CampaignIterationMaxOrderByAggregateInput = {
@@ -699,6 +724,7 @@ export type CampaignIterationMaxOrderByAggregateInput = {
   strategyForNext?: Prisma.SortOrder
   profilingCost?: Prisma.SortOrder
   profilingDuration?: Prisma.SortOrder
+  discoveryDuration?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -716,6 +742,7 @@ export type CampaignIterationMinOrderByAggregateInput = {
   strategyForNext?: Prisma.SortOrder
   profilingCost?: Prisma.SortOrder
   profilingDuration?: Prisma.SortOrder
+  discoveryDuration?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -727,6 +754,7 @@ export type CampaignIterationSumOrderByAggregateInput = {
   avgFitScore?: Prisma.SortOrder
   profilingCost?: Prisma.SortOrder
   profilingDuration?: Prisma.SortOrder
+  discoveryDuration?: Prisma.SortOrder
 }
 
 export type CampaignIterationCreateNestedManyWithoutCampaignInput = {
@@ -837,6 +865,7 @@ export type CampaignIterationCreateWithoutCampaignInput = {
   learnings?: Prisma.CampaignIterationCreatelearningsInput | string[]
   profilingCost?: number | null
   profilingDuration?: number | null
+  discoveryDuration?: number | null
   createdAt?: Date | string
 }
 
@@ -861,6 +890,7 @@ export type CampaignIterationUncheckedCreateWithoutCampaignInput = {
   learnings?: Prisma.CampaignIterationCreatelearningsInput | string[]
   profilingCost?: number | null
   profilingDuration?: number | null
+  discoveryDuration?: number | null
   createdAt?: Date | string
 }
 
@@ -915,6 +945,7 @@ export type CampaignIterationScalarWhereInput = {
   learnings?: Prisma.StringNullableListFilter<"CampaignIteration">
   profilingCost?: Prisma.FloatNullableFilter<"CampaignIteration"> | number | null
   profilingDuration?: Prisma.IntNullableFilter<"CampaignIteration"> | number | null
+  discoveryDuration?: Prisma.IntNullableFilter<"CampaignIteration"> | number | null
   createdAt?: Prisma.DateTimeFilter<"CampaignIteration"> | Date | string
 }
 
@@ -939,6 +970,7 @@ export type CampaignIterationCreateManyCampaignInput = {
   learnings?: Prisma.CampaignIterationCreatelearningsInput | string[]
   profilingCost?: number | null
   profilingDuration?: number | null
+  discoveryDuration?: number | null
   createdAt?: Date | string
 }
 
@@ -963,6 +995,7 @@ export type CampaignIterationUpdateWithoutCampaignInput = {
   learnings?: Prisma.CampaignIterationUpdatelearningsInput | string[]
   profilingCost?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profilingDuration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  discoveryDuration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -987,6 +1020,7 @@ export type CampaignIterationUncheckedUpdateWithoutCampaignInput = {
   learnings?: Prisma.CampaignIterationUpdatelearningsInput | string[]
   profilingCost?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profilingDuration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  discoveryDuration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1011,6 +1045,7 @@ export type CampaignIterationUncheckedUpdateManyWithoutCampaignInput = {
   learnings?: Prisma.CampaignIterationUpdatelearningsInput | string[]
   profilingCost?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profilingDuration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  discoveryDuration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1038,6 +1073,7 @@ export type CampaignIterationSelect<ExtArgs extends runtime.Types.Extensions.Int
   learnings?: boolean
   profilingCost?: boolean
   profilingDuration?: boolean
+  discoveryDuration?: boolean
   createdAt?: boolean
   campaign?: boolean | Prisma.CampaignDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["campaignIteration"]>
@@ -1064,6 +1100,7 @@ export type CampaignIterationSelectCreateManyAndReturn<ExtArgs extends runtime.T
   learnings?: boolean
   profilingCost?: boolean
   profilingDuration?: boolean
+  discoveryDuration?: boolean
   createdAt?: boolean
   campaign?: boolean | Prisma.CampaignDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["campaignIteration"]>
@@ -1090,6 +1127,7 @@ export type CampaignIterationSelectUpdateManyAndReturn<ExtArgs extends runtime.T
   learnings?: boolean
   profilingCost?: boolean
   profilingDuration?: boolean
+  discoveryDuration?: boolean
   createdAt?: boolean
   campaign?: boolean | Prisma.CampaignDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["campaignIteration"]>
@@ -1116,10 +1154,11 @@ export type CampaignIterationSelectScalar = {
   learnings?: boolean
   profilingCost?: boolean
   profilingDuration?: boolean
+  discoveryDuration?: boolean
   createdAt?: boolean
 }
 
-export type CampaignIterationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "campaignId" | "iterationNumber" | "khSetId" | "keywordsUsed" | "hashtagsUsed" | "platformUsed" | "resultsCount" | "profiledCount" | "skippedCount" | "avgFitScore" | "fitDistribution" | "topPerformingKeywords" | "lowPerformingKeywords" | "exclusionPatterns" | "contentThemeFrequency" | "analysisNarrative" | "strategyForNext" | "learnings" | "profilingCost" | "profilingDuration" | "createdAt", ExtArgs["result"]["campaignIteration"]>
+export type CampaignIterationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "campaignId" | "iterationNumber" | "khSetId" | "keywordsUsed" | "hashtagsUsed" | "platformUsed" | "resultsCount" | "profiledCount" | "skippedCount" | "avgFitScore" | "fitDistribution" | "topPerformingKeywords" | "lowPerformingKeywords" | "exclusionPatterns" | "contentThemeFrequency" | "analysisNarrative" | "strategyForNext" | "learnings" | "profilingCost" | "profilingDuration" | "discoveryDuration" | "createdAt", ExtArgs["result"]["campaignIteration"]>
 export type CampaignIterationInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   campaign?: boolean | Prisma.CampaignDefaultArgs<ExtArgs>
 }
@@ -1157,6 +1196,7 @@ export type $CampaignIterationPayload<ExtArgs extends runtime.Types.Extensions.I
     learnings: string[]
     profilingCost: number | null
     profilingDuration: number | null
+    discoveryDuration: number | null
     createdAt: Date
   }, ExtArgs["result"]["campaignIteration"]>
   composites: {}
@@ -1603,6 +1643,7 @@ export interface CampaignIterationFieldRefs {
   readonly learnings: Prisma.FieldRef<"CampaignIteration", 'String[]'>
   readonly profilingCost: Prisma.FieldRef<"CampaignIteration", 'Float'>
   readonly profilingDuration: Prisma.FieldRef<"CampaignIteration", 'Int'>
+  readonly discoveryDuration: Prisma.FieldRef<"CampaignIteration", 'Int'>
   readonly createdAt: Prisma.FieldRef<"CampaignIteration", 'DateTime'>
 }
     

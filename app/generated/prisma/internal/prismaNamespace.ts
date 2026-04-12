@@ -2528,6 +2528,7 @@ export const CampaignIterationScalarFieldEnum = {
   learnings: 'learnings',
   profilingCost: 'profilingCost',
   profilingDuration: 'profilingDuration',
+  discoveryDuration: 'discoveryDuration',
   createdAt: 'createdAt'
 } as const
 

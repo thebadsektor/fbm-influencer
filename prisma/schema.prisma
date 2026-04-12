@@ -416,9 +416,10 @@ model CampaignIteration {
   strategyForNext         String?  @db.Text
   learnings               String[]
 
-  // Cost tracking
+  // Cost and duration tracking
   profilingCost           Float?
   profilingDuration       Int?
+  discoveryDuration       Int?
   createdAt               DateTime @default(now())
 
   @@unique([campaignId, iterationNumber])

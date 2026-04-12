@@ -94,7 +94,7 @@ function ProgressView({ campaign, onAbort, onRefresh }: {
 }) {
   const totalLeads = campaign.khSets
     .filter((s) => s.status === "completed")
-    .reduce((sum, s) => s.totalScraped || (s._count?.results ?? 0), 0);
+    .reduce((sum, s) => sum + (s.totalScraped || (s._count?.results ?? 0)), 0);
   const progress = Math.min(100, Math.round((totalLeads / campaign.targetLeads) * 100));
   const totalCost = (campaign.iterations || []).reduce(
     (sum, i) => sum + (i.profilingCost ?? 0), 0

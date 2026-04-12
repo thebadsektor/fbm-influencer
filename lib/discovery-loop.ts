@@ -211,10 +211,15 @@ async function saveIterationMemory(
   campaignId: string,
   khSetId: string,
   iterationNumber: number,
-  khSet: { keywords: string[]; hashtags: string[]; platform: string | null },
+  khSet: { keywords: string[]; hashtags: string[]; platform: string | null; updatedAt: Date },
   profiling: { profiledCount: number; skippedCount: number; avgFitScore: number; fitDistribution: Record<string, number>; contentThemeFrequency: Record<string, number>; cost: number; durationMs: number },
   analysis: { topPerformingKeywords: string[]; lowPerformingKeywords: string[]; exclusionPatterns: ExclusionPatterns; contentThemeFrequency: Record<string, number>; analysisNarrative: string; strategyForNext: string; learnings: string[] } | null
 ) {
+  // Compute discovery duration from KH set submission to callback
+  const discoveryDuration = Math.round(
+    (Date.now() - new Date(khSet.updatedAt).getTime()) / 1000
+  );
+
   await prisma.campaignIteration.create({
     data: {
       campaignId,
@@ -237,6 +242,7 @@ async function saveIterationMemory(
       learnings: analysis?.learnings ?? [],
       profilingCost: profiling.cost,
       profilingDuration: Math.round(profiling.durationMs / 1000),
+      discoveryDuration,
     },
   });
 
