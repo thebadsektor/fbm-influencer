@@ -357,9 +357,29 @@ model Result {
   rawData          Json?
   affinityProfile  Json?
   campaignFitScore Float?
+  enrichmentRuns   EnrichmentRun[]
   createdAt        DateTime @default(now())
 
   @@map("result")
+}
+
+model EnrichmentRun {
+  id          String    @id @default(cuid())
+  resultId    String
+  result      Result    @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  workflow    String
+  status      String    @default("pending")
+  input       Json?
+  output      Json?
+  error       String?
+  cost        Float?
+  executionId String?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([resultId, workflow])
+  @@index([workflow, status])
+  @@map("enrichment_run")
 }
 
 model Credential {
