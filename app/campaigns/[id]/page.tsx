@@ -14,6 +14,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Table,
   TableBody,
   TableCell,
@@ -59,6 +64,14 @@ import {
 
 // ── Types ──
 
+interface AffinityProfile {
+  campaignFitScore: number;
+  campaignFitReason: string;
+  collaboratability?: { score: number; reason: string; flags: string[] };
+  content_themes?: string[];
+  summary?: string;
+}
+
 interface Result {
   id: string;
   platform: string;
@@ -71,6 +84,7 @@ interface Result {
   bio: string | null;
   avatar: string | null;
   campaignFitScore: number | null;
+  affinityProfile: AffinityProfile | null;
 }
 
 interface IterationData {
@@ -235,7 +249,51 @@ function ResultsModal({ results, open, onClose, title }: {
                   <TableCell><Badge variant="outline" className="text-xs">{r.platform === "TIKTOK" ? "TikTok" : "YouTube"}</Badge></TableCell>
                   <TableCell>{r.email ? <span className="flex items-center gap-1 text-green-500 text-sm"><Mail className="h-3 w-3" />{r.email}</span> : <span className="text-muted-foreground">-</span>}</TableCell>
                   <TableCell className="tabular-nums text-sm">{formatFollowers(r.followers)}</TableCell>
-                  <TableCell>{r.campaignFitScore != null ? <Badge variant={r.campaignFitScore >= 60 ? "default" : "secondary"}>{r.campaignFitScore}</Badge> : "-"}</TableCell>
+                  <TableCell>
+                    {r.campaignFitScore != null ? (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button className="cursor-pointer">
+                            <Badge variant={r.campaignFitScore >= 60 ? "default" : "secondary"} className="hover:ring-2 hover:ring-primary/50 transition-all">
+                              {r.campaignFitScore}
+                            </Badge>
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 text-sm space-y-2" side="left">
+                          <p className="font-medium">Fit Score: {r.campaignFitScore}/100</p>
+                          {(r.affinityProfile as AffinityProfile | null)?.campaignFitReason && (
+                            <p className="text-muted-foreground">{(r.affinityProfile as AffinityProfile).campaignFitReason}</p>
+                          )}
+                          {(r.affinityProfile as AffinityProfile | null)?.collaboratability && (
+                            <div className="pt-1 border-t">
+                              <p className="text-xs font-medium">Collaboratability: {(r.affinityProfile as AffinityProfile).collaboratability?.score}/100</p>
+                              <p className="text-xs text-muted-foreground">{(r.affinityProfile as AffinityProfile).collaboratability?.reason}</p>
+                              {(r.affinityProfile as AffinityProfile).collaboratability?.flags?.length ? (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {(r.affinityProfile as AffinityProfile).collaboratability!.flags.map((f) => (
+                                    <Badge key={f} variant="outline" className="text-xs">{f}</Badge>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          )}
+                          {(r.affinityProfile as AffinityProfile | null)?.content_themes && (
+                            <div className="pt-1 border-t">
+                              <p className="text-xs font-medium mb-1">Themes</p>
+                              <div className="flex flex-wrap gap-1">
+                                {(r.affinityProfile as AffinityProfile).content_themes!.slice(0, 6).map((t) => (
+                                  <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {(r.affinityProfile as AffinityProfile | null)?.summary && (
+                            <p className="text-xs text-muted-foreground italic pt-1 border-t">{(r.affinityProfile as AffinityProfile).summary}</p>
+                          )}
+                        </PopoverContent>
+                      </Popover>
+                    ) : "-"}
+                  </TableCell>
                   <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{r.bio?.slice(0, 80) || "-"}</TableCell>
                   <TableCell>{r.profileUrl && <a href={r.profileUrl} target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="sm" className="h-7 px-2"><ExternalLink className="h-3 w-3" /></Button></a>}</TableCell>
                 </TableRow>
@@ -280,6 +338,7 @@ function TimelineRound({
 }) {
   const [showAllCreators, setShowAllCreators] = useState(false);
   const [showQualified, setShowQualified] = useState(false);
+  const [showUnqualified, setShowUnqualified] = useState(false);
   const [retrying, setRetrying] = useState(false);
 
   const resultCount = khSet.totalScraped || khSet._count?.results || 0;
@@ -332,6 +391,7 @@ function TimelineRound({
   };
 
   const qualifiedResults = results.filter((r) => (r.campaignFitScore ?? 0) >= 60);
+  const unqualifiedResults = results.filter((r) => r.campaignFitScore != null && r.campaignFitScore < 60);
 
   return (
     <div className="mb-8">
@@ -436,8 +496,11 @@ function TimelineRound({
           const profilingLogs = logs.filter((l) =>
             l.stage.includes("profil") || l.stage.includes("analysis") || l.stage === "scraping_complete"
           );
-          return profilingLogs.length > 0 ? (
+          return (
             <div className="bg-black/90 rounded-lg p-3 font-mono text-xs max-h-48 overflow-y-auto space-y-0.5">
+              {profilingLogs.length === 0 && (
+                <p className="text-muted-foreground animate-pulse">AI is evaluating {resultCount} creators against your campaign brief...</p>
+              )}
               {profilingLogs.map((entry, i) => (
                 <div key={i} className={`flex gap-2 ${
                   entry.stage.includes("complete") || entry.stage.includes("done") ? "text-green-400" :
@@ -452,7 +515,7 @@ function TimelineRound({
                 </div>
               ))}
             </div>
-          ) : null;
+          );
         })()}
 
         {/* Completed stats */}
@@ -476,11 +539,18 @@ function TimelineRound({
                 <p className="text-xs text-muted-foreground">Qualified (60+)</p>
               </div>
             </div>
-            {qualifiedResults.length > 0 && (
-              <Button variant="outline" size="sm" onClick={() => setShowQualified(true)}>
-                <Users className="h-3 w-3 mr-1" /> View Qualified Leads ({qualifiedResults.length})
-              </Button>
-            )}
+            <div className="flex gap-2 flex-wrap">
+              {qualifiedResults.length > 0 && (
+                <Button variant="outline" size="sm" onClick={() => setShowQualified(true)}>
+                  <Users className="h-3 w-3 mr-1" /> View Qualified Leads ({qualifiedResults.length})
+                </Button>
+              )}
+              {unqualifiedResults.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={() => setShowUnqualified(true)} className="text-muted-foreground">
+                  <Users className="h-3 w-3 mr-1" /> View Unqualified ({unqualifiedResults.length})
+                </Button>
+              )}
+            </div>
           </div>
         )}
 
@@ -547,6 +617,7 @@ function TimelineRound({
       {/* Modals */}
       <ResultsModal results={results} open={showAllCreators} onClose={() => setShowAllCreators(false)} title="All Discovered Creators" />
       <ResultsModal results={qualifiedResults} open={showQualified} onClose={() => setShowQualified(false)} title="Qualified Leads (Fit ≥ 60)" />
+      <ResultsModal results={unqualifiedResults} open={showUnqualified} onClose={() => setShowUnqualified(false)} title="Unqualified Leads (Fit < 60)" />
     </div>
   );
 }

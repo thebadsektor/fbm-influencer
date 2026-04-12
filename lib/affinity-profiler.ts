@@ -241,10 +241,10 @@ export async function profileBatch(
         }
         profiledCount++;
 
-        // Progress event every 10 creators
-        if (options?.khSetId && profiledCount % 10 === 0) {
+        // Progress event every 5 creators
+        if (options?.khSetId && profiledCount % 5 === 0) {
           await publishDiscoveryEvent(options.khSetId, "profiling_progress",
-            `Profiled ${profiledCount}/${profilable.length} — latest: @${result.creatorHandle || "?"}`,
+            `Profiled ${profiledCount}/${profilable.length} — @${result.creatorHandle || "?"} (fit: ${profile.campaignFitScore})`,
             { current: profiledCount, total: profilable.length }
           );
         }
