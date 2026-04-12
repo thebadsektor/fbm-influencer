@@ -1,0 +1,15 @@
+-- AlterTable
+ALTER TABLE "result" ADD COLUMN     "avatar" TEXT,
+ADD COLUMN     "avgLikes" INTEGER,
+ADD COLUMN     "avgViews" INTEGER,
+ADD COLUMN     "bio" TEXT,
+ADD COLUMN     "crawlTargets" TEXT,
+ADD COLUMN     "emailType" TEXT,
+ADD COLUMN     "hashtags" TEXT,
+ADD COLUMN     "rawText" TEXT,
+ADD COLUMN     "recentActivity" TEXT,
+ADD COLUMN     "scrapeHits" INTEGER,
+ADD COLUMN     "topVideoViews" INTEGER,
+ADD COLUMN     "totalViews" INTEGER,
+ADD COLUMN     "verified" BOOLEAN,
+ADD COLUMN     "videoCount" INTEGER;

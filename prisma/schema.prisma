@@ -327,20 +327,37 @@ model KHSet {
 }
 
 model Result {
-  id             String   @id @default(cuid())
-  khSetId        String
-  khSet          KHSet    @relation(fields: [khSetId], references: [id], onDelete: Cascade)
-  platform       String
-  creatorName    String?
-  creatorHandle  String?
-  profileUrl     String?
-  email          String?
-  emailSource    String?
-  confidence     String?
-  followers      String?
-  engagementRate String?
-  rawData        Json?
-  createdAt      DateTime @default(now())
+  id               String   @id @default(cuid())
+  khSetId          String
+  khSet            KHSet    @relation(fields: [khSetId], references: [id], onDelete: Cascade)
+  platform         String
+  platformId       String?
+  creatorName      String?
+  creatorHandle    String?
+  profileUrl       String?
+  email            String?
+  emailSource      String?
+  emailType        String?
+  confidence       String?
+  followers        String?
+  engagementRate   String?
+  bio              String?  @db.Text
+  rawText          String?  @db.Text
+  hashtags         String?  @db.Text
+  crawlTargets     String?  @db.Text
+  verified         Boolean?
+  avatar           String?
+  videoCount       Int?
+  totalViews       Int?
+  avgViews         Int?
+  avgLikes         Int?
+  topVideoViews    Int?
+  scrapeHits       Int?
+  recentActivity   String?
+  rawData          Json?
+  affinityProfile  Json?
+  campaignFitScore Float?
+  createdAt        DateTime @default(now())
 
   @@map("result")
 }
