@@ -300,6 +300,7 @@ function TimelineRound({
   };
 
   const getProfilingStatus = (): StepStatus => {
+    if (getDiscoveryStatus() !== "completed") return "pending";
     if (iteration && iteration.profiledCount > 0) return "completed";
     if (isLatest && campaignStatus === "profiling") return "active";
     if (isLatest && ["analyzing", "awaiting_approval", "iterating"].includes(campaignStatus) && !iteration) return "failed";
@@ -307,6 +308,8 @@ function TimelineRound({
   };
 
   const getOptimizationStatus = (): StepStatus => {
+    const profStatus = getProfilingStatus();
+    if (profStatus === "pending" || profStatus === "active") return "pending";
     if (isLatest && campaignStatus === "awaiting_approval") return "active";
     if (isLatest && campaignStatus === "analyzing") return "active";
     if (iteration?.analysisNarrative) return "completed";
@@ -408,14 +411,16 @@ function TimelineRound({
 
       {/* Step 3: AI Profiling */}
       <TimelineStep
-        title="AI Profiling"
+        title={
+          profilingProgressData
+            ? `AI Profiling ${profilingProgressData.current}/${profilingProgressData.total}`
+            : "AI Profiling"
+        }
         status={getProfilingStatus()}
         icon={<Brain className="h-4 w-4" />}
         summary={
           iteration
             ? `${iteration.profiledCount} profiled, ${iteration.skippedCount} skipped. Avg fit: ${Math.round(iteration.avgFitScore ?? 0)}/100`
-            : profilingProgressData
-            ? `Profiling ${profilingProgressData.current}/${profilingProgressData.total}...`
             : profilingSummaryEvent
             ? profilingSummaryEvent.message
             : undefined
@@ -423,9 +428,34 @@ function TimelineRound({
         duration={formatDuration(iteration?.profilingDuration)}
         cost={iteration?.profilingCost ? iteration.profilingCost.toFixed(2) : undefined}
         defaultExpanded={isLatest && getProfilingStatus() === "active"}
-        onRetry={getProfilingStatus() === "failed" || (isLatest && !iteration && khSet.status === "completed") ? handleRetryProfiling : undefined}
+        onRetry={getProfilingStatus() === "failed" ? handleRetryProfiling : undefined}
         retryLabel={retrying ? "Retrying..." : "Retry Profiling & Analysis"}
       >
+        {/* Progress log during active profiling */}
+        {getProfilingStatus() === "active" && (() => {
+          const profilingLogs = logs.filter((l) =>
+            l.stage.includes("profil") || l.stage.includes("analysis") || l.stage === "scraping_complete"
+          );
+          return profilingLogs.length > 0 ? (
+            <div className="bg-black/90 rounded-lg p-3 font-mono text-xs max-h-48 overflow-y-auto space-y-0.5">
+              {profilingLogs.map((entry, i) => (
+                <div key={i} className={`flex gap-2 ${
+                  entry.stage.includes("complete") || entry.stage.includes("done") ? "text-green-400" :
+                  entry.stage.includes("error") ? "text-red-400" :
+                  entry.stage.includes("progress") ? "text-purple-400" :
+                  "text-cyan-400"
+                }`}>
+                  <span className="text-muted-foreground flex-shrink-0">
+                    [{new Date(entry.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}]
+                  </span>
+                  <span className="break-words">{entry.message}</span>
+                </div>
+              ))}
+            </div>
+          ) : null;
+        })()}
+
+        {/* Completed stats */}
         {iteration && (
           <div className="space-y-3">
             <div className="grid grid-cols-4 gap-2 text-center">
@@ -453,8 +483,9 @@ function TimelineRound({
             )}
           </div>
         )}
-        {/* Retry button for stuck campaigns */}
-        {!iteration && isLatest && khSet.status === "completed" && !retrying && (
+
+        {/* Manual trigger — only when discovery done, no iteration yet, profiling not active */}
+        {!iteration && isLatest && khSet.status === "completed" && getProfilingStatus() !== "active" && !retrying && (
           <Button variant="outline" size="sm" onClick={handleRetryProfiling}>
             <RotateCcw className="h-3 w-3 mr-1" /> Run AI Profiling
           </Button>
@@ -552,7 +583,7 @@ export default function CampaignDetailPage() {
 
     // Fetch results for each KH set (lightweight — only fields needed for tables)
     for (const set of data.khSets) {
-      if (set.status === "completed" || (set._count?.results ?? 0) > 0) {
+      if (set.status === "completed" || set.status === "processing" || (set._count?.results ?? 0) > 0) {
         const rRes = await fetch(`/api/campaigns/${params.id}/kh-sets/${set.id}`);
         if (rRes.ok) {
           const setData = await rRes.json();

@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequiredUser } from "@/lib/auth-helpers";
 import { campaignPatchSchema, parseBody } from "@/lib/validations";
+import { checkKHSetCompletion } from "@/lib/completion-detector";
 
 export async function GET(
   _req: NextRequest,
@@ -24,7 +25,27 @@ export async function GET(
     },
   });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(campaign);
+
+  // Check for completion on any processing KH sets (stabilization-based)
+  for (const set of campaign.khSets) {
+    if (set.status === "processing") {
+      await checkKHSetCompletion(set.id).catch((err) => {
+        console.error("[campaign-get] Completion check error:", err);
+      });
+    }
+  }
+
+  // Re-fetch after potential status changes from completion check
+  const refreshed = await prisma.campaign.findFirst({
+    where: { id, userId: user.id },
+    include: {
+      documents: true,
+      khSets: { orderBy: { createdAt: "asc" }, include: { _count: { select: { results: true } } } },
+      iterations: { orderBy: { iterationNumber: "asc" } },
+    },
+  });
+
+  return NextResponse.json(refreshed || campaign);
 }
 
 export async function PATCH(
