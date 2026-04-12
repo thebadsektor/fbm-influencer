@@ -3,6 +3,7 @@ import { Prisma } from "@/app/generated/prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyN8nRequest } from "@/lib/verify-n8n-signature";
 import { n8nStatsSyncSchema, parseBody } from "@/lib/validations";
+import { publishDiscoveryEvent } from "@/lib/redis";
 
 export async function POST(req: NextRequest) {
   const verified = await verifyN8nRequest(req);
@@ -44,6 +45,20 @@ export async function POST(req: NextRequest) {
   await prisma.kHSet.update({
     where: { id: khSetId },
     data,
+  });
+
+  // Publish stats update to Redis for SSE clients
+  const parts: string[] = [];
+  if (totalScraped !== undefined) parts.push(`${totalScraped} scraped`);
+  if (qualified !== undefined) parts.push(`${qualified} qualified`);
+  if (disqualified !== undefined) parts.push(`${disqualified} disqualified`);
+  if (missingEmail !== undefined) parts.push(`${missingEmail} missing email`);
+  if (enriched !== undefined) parts.push(`${enriched} enriched`);
+  const message = parts.length > 0 ? parts.join(", ") : "Stats updated";
+
+  await publishDiscoveryEvent(khSetId, "stats_update", message, {
+    totalScraped, qualified, disqualified, missingEmail, enriched,
+    ...(extraStats || {}),
   });
 
   return NextResponse.json({ ok: true });

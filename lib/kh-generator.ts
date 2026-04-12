@@ -1,6 +1,16 @@
 import prisma from "@/lib/prisma";
 import { llmGenerate, parseJsonFromLLM, LLMProvider } from "@/lib/llm";
 import { resolveApiKey } from "@/lib/credential-resolver";
+import type { ExclusionPatterns } from "@/lib/iteration-analyzer";
+
+export interface StrategyContext {
+  topPerformingKeywords: string[];
+  lowPerformingKeywords: string[];
+  exclusionPatterns: ExclusionPatterns;
+  strategyRecommendation: string;
+  accumulatedLearnings: string[];
+  avgFitScoreByIteration: (number | null)[];
+}
 
 export interface KHGenerationParams {
   campaignId: string;
@@ -23,7 +33,7 @@ export interface KHGenerationParams {
   maxHashtags: number;
   provider: LLMProvider;
   userId?: string;
-  // Iteration context — provided for 2nd+ rounds
+  // Iteration context
   iterationNumber?: number;
   previousKeywords?: string[];
   previousHashtags?: string[];
@@ -32,6 +42,8 @@ export interface KHGenerationParams {
     topCreatorThemes: string[];
     topHashtagsFromContent: string[];
   };
+  // Strategy intelligence (from iteration analyzer)
+  strategyContext?: StrategyContext;
 }
 
 /**
@@ -52,6 +64,7 @@ export async function generateKHSet(params: KHGenerationParams) {
     previousKeywords,
     previousHashtags,
     previousResults,
+    strategyContext,
   } = params;
 
   const docContext = documentContents.filter(Boolean).join("\n\n---\n\n");
@@ -68,11 +81,37 @@ Previously used keywords: ${previousKeywords.join(", ")}
 Previously used hashtags: ${previousHashtags?.join(", ") || "none"}
 Creators found so far: ${previousResults?.creatorsFound || 0}
 ${previousResults?.topCreatorThemes?.length ? `Top themes from discovered creators: ${previousResults.topCreatorThemes.join(", ")}` : ""}
-${previousResults?.topHashtagsFromContent?.length ? `Popular hashtags in scraped content: ${previousResults.topHashtagsFromContent.join(", ")}` : ""}
+${previousResults?.topHashtagsFromContent?.length ? `Popular hashtags in scraped content: ${previousResults.topHashtagsFromContent.join(", ")}` : ""}`;
+  }
 
-Strategy: Use the themes and hashtags found in scraped content as INSPIRATION for new search terms.
-Explore adjacent niches, related topics, and alternative phrasing.
-The goal is to find NEW creators, not the same ones again.`;
+  // Strategy intelligence section (from iteration analyzer)
+  let strategySection = "";
+  if (strategyContext) {
+    const sc = strategyContext;
+    const fitTrend = sc.avgFitScoreByIteration.filter(Boolean).map((s, i) => `R${i + 1}:${s}`).join(" → ");
+
+    strategySection = `
+STRATEGY INTELLIGENCE (from AI analysis of prior rounds):
+${fitTrend ? `Fit score trend: ${fitTrend}` : ""}
+${sc.topPerformingKeywords.length ? `High-performing keywords (produced fit>60 creators): ${sc.topPerformingKeywords.join(", ")}` : ""}
+${sc.lowPerformingKeywords.length ? `Low-performing keywords (produced fit<30, AVOID similar): ${sc.lowPerformingKeywords.join(", ")}` : ""}
+
+EXCLUSION PATTERNS (DO NOT generate keywords that would find these types):
+${sc.exclusionPatterns.themePatterns.length ? `- Avoid themes: ${sc.exclusionPatterns.themePatterns.join(", ")}` : ""}
+${sc.exclusionPatterns.handlePatterns.length ? `- Avoid channels matching: ${sc.exclusionPatterns.handlePatterns.join(", ")}` : ""}
+${sc.exclusionPatterns.lowFitThemes.length ? `- Low-fit themes: ${sc.exclusionPatterns.lowFitThemes.join(", ")}` : ""}
+${sc.exclusionPatterns.followerCeiling ? `- Suggested follower ceiling: ${sc.exclusionPatterns.followerCeiling.toLocaleString()}` : ""}
+
+STRATEGY RECOMMENDATION:
+${sc.strategyRecommendation}
+
+ACCUMULATED LEARNINGS:
+${sc.accumulatedLearnings.slice(-10).map(l => `- ${l}`).join("\n")}
+
+INSTRUCTIONS: Generate keywords that LEAN INTO what worked and AVOID what didn't.
+Do NOT generate keywords similar to the low-performing ones.
+Explore ADJACENT niches that the high-performing keywords suggest.
+The goal is to find NEW collaboratable creators, not news networks or mega-celebrities.`;
   }
 
   const prompt = `You are an influencer marketing specialist. Generate keywords and hashtags for finding TikTok and YouTube creators matching this campaign brief.
@@ -91,6 +130,7 @@ Campaign:
 
 ${docContext ? `Context Documents:\n${docContext}` : ""}
 ${iterationContext}
+${strategySection}
 
 Generate ${minKeywords}-${maxKeywords} search keywords and ${minHashtags}-${maxHashtags} hashtags (with # prefix) that would be effective for finding relevant influencers on TikTok and YouTube.
 
@@ -98,7 +138,7 @@ Return ONLY valid JSON in this exact format, no other text:
 {"keywords": ["keyword1", "keyword2"], "hashtags": ["#hashtag1", "#hashtag2"]}`;
 
   const apiKey = userId ? await resolveApiKey(userId, provider) : undefined;
-  const text = await llmGenerate(provider, prompt, 1024, apiKey);
+  const text = await llmGenerate(provider, prompt, 2048, apiKey);
   const parsed = parseJsonFromLLM<{ keywords: string[]; hashtags: string[] }>(text);
 
   const khSet = await prisma.kHSet.create({

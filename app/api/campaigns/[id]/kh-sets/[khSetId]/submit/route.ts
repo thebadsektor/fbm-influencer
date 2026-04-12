@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequiredUser } from "@/lib/auth-helpers";
 import { khSetSubmitSchema, parseBody } from "@/lib/validations";
+import { publishDiscoveryEvent } from "@/lib/redis";
 
 export async function POST(
   req: NextRequest,
@@ -89,6 +90,12 @@ export async function POST(
     await prisma.kHSet.update({
       where: { id: khSetId },
       data: { status: "processing", locked: true, platform },
+    });
+
+    await publishDiscoveryEvent(khSetId, "started", `Discovery started — ${set.keywords.length} keywords, ${set.hashtags.length} hashtags on ${platform}`, {
+      keywords: set.keywords.length,
+      hashtags: set.hashtags.length,
+      platform,
     });
 
     return NextResponse.json({ ok: true, status: "processing" });

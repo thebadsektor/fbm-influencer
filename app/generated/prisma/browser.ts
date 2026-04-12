@@ -123,6 +123,11 @@ export type Result = Prisma.ResultModel
  */
 export type EnrichmentRun = Prisma.EnrichmentRunModel
 /**
+ * Model CampaignIteration
+ * 
+ */
+export type CampaignIteration = Prisma.CampaignIterationModel
+/**
  * Model Credential
  * 
  */

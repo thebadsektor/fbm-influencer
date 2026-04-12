@@ -269,6 +269,7 @@ model Campaign {
   maxIterations       Int        @default(10)
   documents           Document[]
   khSets              KHSet[]
+  iterations          CampaignIteration[]
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
 
@@ -383,6 +384,45 @@ model EnrichmentRun {
   @@index([resultId, workflow])
   @@index([workflow, status])
   @@map("enrichment_run")
+}
+
+model CampaignIteration {
+  id                      String   @id @default(cuid())
+  campaignId              String
+  campaign                Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  iterationNumber         Int
+  khSetId                 String?
+
+  // What was tried
+  keywordsUsed            String[]
+  hashtagsUsed            String[]
+  platformUsed            String?
+
+  // What happened
+  resultsCount            Int      @default(0)
+  profiledCount           Int      @default(0)
+  skippedCount            Int      @default(0)
+  avgFitScore             Float?
+  fitDistribution         Json?
+
+  // What was learned
+  topPerformingKeywords   String[]
+  lowPerformingKeywords   String[]
+  exclusionPatterns       Json?
+  contentThemeFrequency   Json?
+
+  // AI reasoning (visible to user)
+  analysisNarrative       String?  @db.Text
+  strategyForNext         String?  @db.Text
+  learnings               String[]
+
+  // Cost tracking
+  profilingCost           Float?
+  profilingDuration       Int?
+  createdAt               DateTime @default(now())
+
+  @@unique([campaignId, iterationNumber])
+  @@map("campaign_iteration")
 }
 
 model Credential {

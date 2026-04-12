@@ -405,6 +405,7 @@ export const ModelName = {
   KHSet: 'KHSet',
   Result: 'Result',
   EnrichmentRun: 'EnrichmentRun',
+  CampaignIteration: 'CampaignIteration',
   Credential: 'Credential'
 } as const
 
@@ -421,7 +422,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "notification" | "discussion" | "discussionVote" | "discussionReport" | "discussionView" | "comment" | "commentVote" | "session" | "account" | "verification" | "feedback" | "feedbackReply" | "feedbackNotificationEmail" | "subscription" | "campaign" | "document" | "documentAnalysisCache" | "kHSet" | "result" | "enrichmentRun" | "credential"
+    modelProps: "user" | "notification" | "discussion" | "discussionVote" | "discussionReport" | "discussionView" | "comment" | "commentVote" | "session" | "account" | "verification" | "feedback" | "feedbackReply" | "feedbackNotificationEmail" | "subscription" | "campaign" | "document" | "documentAnalysisCache" | "kHSet" | "result" | "enrichmentRun" | "campaignIteration" | "credential"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1979,6 +1980,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    CampaignIteration: {
+      payload: Prisma.$CampaignIterationPayload<ExtArgs>
+      fields: Prisma.CampaignIterationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.CampaignIterationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CampaignIterationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.CampaignIterationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CampaignIterationPayload>
+        }
+        findFirst: {
+          args: Prisma.CampaignIterationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CampaignIterationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.CampaignIterationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CampaignIterationPayload>
+        }
+        findMany: {
+          args: Prisma.CampaignIterationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CampaignIterationPayload>[]
+        }
+        create: {
+          args: Prisma.CampaignIterationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CampaignIterationPayload>
+        }
+        createMany: {
+          args: Prisma.CampaignIterationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.CampaignIterationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CampaignIterationPayload>[]
+        }
+        delete: {
+          args: Prisma.CampaignIterationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CampaignIterationPayload>
+        }
+        update: {
+          args: Prisma.CampaignIterationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CampaignIterationPayload>
+        }
+        deleteMany: {
+          args: Prisma.CampaignIterationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.CampaignIterationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.CampaignIterationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CampaignIterationPayload>[]
+        }
+        upsert: {
+          args: Prisma.CampaignIterationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CampaignIterationPayload>
+        }
+        aggregate: {
+          args: Prisma.CampaignIterationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateCampaignIteration>
+        }
+        groupBy: {
+          args: Prisma.CampaignIterationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CampaignIterationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.CampaignIterationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CampaignIterationCountAggregateOutputType> | number
+        }
+      }
+    }
     Credential: {
       payload: Prisma.$CredentialPayload<ExtArgs>
       fields: Prisma.CredentialFieldRefs
@@ -2431,6 +2506,34 @@ export const EnrichmentRunScalarFieldEnum = {
 export type EnrichmentRunScalarFieldEnum = (typeof EnrichmentRunScalarFieldEnum)[keyof typeof EnrichmentRunScalarFieldEnum]
 
 
+export const CampaignIterationScalarFieldEnum = {
+  id: 'id',
+  campaignId: 'campaignId',
+  iterationNumber: 'iterationNumber',
+  khSetId: 'khSetId',
+  keywordsUsed: 'keywordsUsed',
+  hashtagsUsed: 'hashtagsUsed',
+  platformUsed: 'platformUsed',
+  resultsCount: 'resultsCount',
+  profiledCount: 'profiledCount',
+  skippedCount: 'skippedCount',
+  avgFitScore: 'avgFitScore',
+  fitDistribution: 'fitDistribution',
+  topPerformingKeywords: 'topPerformingKeywords',
+  lowPerformingKeywords: 'lowPerformingKeywords',
+  exclusionPatterns: 'exclusionPatterns',
+  contentThemeFrequency: 'contentThemeFrequency',
+  analysisNarrative: 'analysisNarrative',
+  strategyForNext: 'strategyForNext',
+  learnings: 'learnings',
+  profilingCost: 'profilingCost',
+  profilingDuration: 'profilingDuration',
+  createdAt: 'createdAt'
+} as const
+
+export type CampaignIterationScalarFieldEnum = (typeof CampaignIterationScalarFieldEnum)[keyof typeof CampaignIterationScalarFieldEnum]
+
+
 export const CredentialScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -2695,6 +2798,7 @@ export type GlobalOmitConfig = {
   kHSet?: Prisma.KHSetOmit
   result?: Prisma.ResultOmit
   enrichmentRun?: Prisma.EnrichmentRunOmit
+  campaignIteration?: Prisma.CampaignIterationOmit
   credential?: Prisma.CredentialOmit
 }
 

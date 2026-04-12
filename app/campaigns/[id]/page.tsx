@@ -42,6 +42,22 @@ interface KHSetSummary {
   totalScraped: number;
 }
 
+interface IterationSummary {
+  id: string;
+  iterationNumber: number;
+  resultsCount: number;
+  profiledCount: number;
+  skippedCount: number;
+  avgFitScore: number | null;
+  fitDistribution: Record<string, number> | null;
+  topPerformingKeywords: string[];
+  lowPerformingKeywords: string[];
+  analysisNarrative: string | null;
+  strategyForNext: string | null;
+  learnings: string[];
+  profilingCost: number | null;
+}
+
 interface Campaign {
   id: string;
   name: string;
@@ -53,6 +69,7 @@ interface Campaign {
   targetHashtags: number;
   documents: { id: string; filename: string; createdAt: string }[];
   khSets: KHSetSummary[];
+  iterations: IterationSummary[];
 }
 
 function getFileIcon(filename: string) {
@@ -65,7 +82,7 @@ function statusBadgeVariant(status: string) {
   switch (status) {
     case "completed": return "default" as const;
     case "failed": case "aborted": return "destructive" as const;
-    case "discovering": case "iterating": case "processing": return "secondary" as const;
+    case "discovering": case "iterating": case "processing": case "profiling": case "analyzing": return "secondary" as const;
     default: return "outline" as const;
   }
 }
@@ -79,7 +96,7 @@ function ProgressView({ campaign, onAbort, onRefresh }: {
     .filter((s) => s.status === "completed")
     .reduce((sum, s) => s.totalScraped || (s._count?.results ?? 0), 0);
   const progress = Math.min(100, Math.round((totalLeads / campaign.targetLeads) * 100));
-  const isRunning = ["discovering", "iterating", "aborting"].includes(campaign.status);
+  const isRunning = ["discovering", "iterating", "aborting", "profiling", "analyzing"].includes(campaign.status);
   const isProcessing = campaign.khSets.some((s) => s.status === "processing");
 
   return (
@@ -137,49 +154,86 @@ function ProgressView({ campaign, onAbort, onRefresh }: {
             />
           </div>
           <p className="text-sm text-muted-foreground mt-2">
-            {progress}% complete &middot; {campaign.khSets.filter((s) => s.status === "completed").length} iterations completed
-            {isProcessing && " \u00b7 Running..."}
+            {progress}% complete &middot; {campaign.khSets.filter((s) => s.status === "completed").length} rounds completed
+            {isProcessing && " \u00b7 Scraping..."}
+            {campaign.status === "profiling" && " \u00b7 AI profiling creators..."}
+            {campaign.status === "analyzing" && " \u00b7 Analyzing results..."}
           </p>
         </CardContent>
       </Card>
 
-      {/* Iteration List */}
+      {/* Iteration List with Intelligence */}
       <div>
         <h3 className="scroll-m-20 text-xl font-semibold tracking-tight mb-3">Discovery Rounds</h3>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {campaign.khSets
             .sort((a, b) => a.iterationNumber - b.iterationNumber)
-            .map((set) => (
-              <Link
-                key={set.id}
-                href={`/campaigns/${campaign.id}/kh-sets/${set.id}`}
-                className="block"
-              >
-                <div className="flex items-center justify-between p-4 rounded-lg border hover:border-primary/50 hover:shadow-sm transition-all">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-sm font-bold">
-                      {set.iterationNumber}
+            .map((set) => {
+              const iteration = campaign.iterations?.find(
+                (i) => i.iterationNumber === set.iterationNumber
+              );
+              return (
+                <div key={set.id} className="rounded-lg border overflow-hidden">
+                  <Link href={`/campaigns/${campaign.id}/kh-sets/${set.id}`} className="block">
+                    <div className="flex items-center justify-between p-4 hover:bg-muted/30 transition-all">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-sm font-bold">
+                          {set.iterationNumber}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">
+                            Round {set.iterationNumber} &middot; {set.keywords.length} kw, {set.hashtags.length} ht
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {set.status === "completed"
+                              ? `${set.totalScraped || set._count?.results || 0} leads`
+                              : set.status === "processing"
+                              ? "Scraping..."
+                              : set.status}
+                            {iteration?.avgFitScore != null && (
+                              <span className={`ml-2 ${iteration.avgFitScore >= 50 ? "text-green-500" : iteration.avgFitScore >= 25 ? "text-yellow-500" : "text-red-400"}`}>
+                                Fit: {Math.round(iteration.avgFitScore)}/100
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant={statusBadgeVariant(set.status)}>
+                        {set.status === "processing" && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                        {set.status}
+                      </Badge>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">
-                        Round {set.iterationNumber} &middot; {set.keywords.length} keywords, {set.hashtags.length} hashtags
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {set.status === "completed"
-                          ? `${set.totalScraped || set._count?.results || 0} leads found`
-                          : set.status === "processing"
-                          ? "Discovering..."
-                          : set.status}
-                      </p>
+                  </Link>
+
+                  {/* Iteration Intelligence (if available) */}
+                  {iteration && (
+                    <div className="px-4 pb-4 pt-0 border-t bg-muted/10 space-y-2">
+                      {iteration.learnings.length > 0 && (
+                        <div className="text-xs space-y-1">
+                          {iteration.learnings.slice(0, 3).map((l, i) => (
+                            <p key={i} className="text-muted-foreground">• {l}</p>
+                          ))}
+                        </div>
+                      )}
+                      {iteration.topPerformingKeywords.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {iteration.topPerformingKeywords.slice(0, 5).map((kw) => (
+                            <span key={kw} className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 text-xs font-medium">
+                              {kw}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {iteration.analysisNarrative && (
+                        <p className="text-xs text-muted-foreground italic line-clamp-2">
+                          {iteration.analysisNarrative}
+                        </p>
+                      )}
                     </div>
-                  </div>
-                  <Badge variant={statusBadgeVariant(set.status)}>
-                    {set.status === "processing" && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                    {set.status}
-                  </Badge>
+                  )}
                 </div>
-              </Link>
-            ))}
+              );
+            })}
         </div>
       </div>
     </div>
@@ -219,7 +273,7 @@ export default function CampaignDetailPage() {
   // Poll while discovering/iterating
   useEffect(() => {
     if (!campaign) return;
-    const isActive = ["discovering", "iterating", "aborting"].includes(campaign.status) ||
+    const isActive = ["discovering", "iterating", "aborting", "profiling", "analyzing"].includes(campaign.status) ||
       campaign.khSets.some((s) => s.status === "processing");
     if (!isActive) return;
     const interval = setInterval(load, 5000);
@@ -300,7 +354,7 @@ export default function CampaignDetailPage() {
   }
 
   const hasRuns = campaign.khSets.length > 0;
-  const isActive = ["discovering", "iterating", "aborting"].includes(campaign.status) ||
+  const isActive = ["discovering", "iterating", "aborting", "profiling", "analyzing"].includes(campaign.status) ||
     campaign.khSets.some((s) => s.status === "processing");
 
   return (

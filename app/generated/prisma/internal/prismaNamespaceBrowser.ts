@@ -72,6 +72,7 @@ export const ModelName = {
   KHSet: 'KHSet',
   Result: 'Result',
   EnrichmentRun: 'EnrichmentRun',
+  CampaignIteration: 'CampaignIteration',
   Credential: 'Credential'
 } as const
 
@@ -428,6 +429,34 @@ export const EnrichmentRunScalarFieldEnum = {
 } as const
 
 export type EnrichmentRunScalarFieldEnum = (typeof EnrichmentRunScalarFieldEnum)[keyof typeof EnrichmentRunScalarFieldEnum]
+
+
+export const CampaignIterationScalarFieldEnum = {
+  id: 'id',
+  campaignId: 'campaignId',
+  iterationNumber: 'iterationNumber',
+  khSetId: 'khSetId',
+  keywordsUsed: 'keywordsUsed',
+  hashtagsUsed: 'hashtagsUsed',
+  platformUsed: 'platformUsed',
+  resultsCount: 'resultsCount',
+  profiledCount: 'profiledCount',
+  skippedCount: 'skippedCount',
+  avgFitScore: 'avgFitScore',
+  fitDistribution: 'fitDistribution',
+  topPerformingKeywords: 'topPerformingKeywords',
+  lowPerformingKeywords: 'lowPerformingKeywords',
+  exclusionPatterns: 'exclusionPatterns',
+  contentThemeFrequency: 'contentThemeFrequency',
+  analysisNarrative: 'analysisNarrative',
+  strategyForNext: 'strategyForNext',
+  learnings: 'learnings',
+  profilingCost: 'profilingCost',
+  profilingDuration: 'profilingDuration',
+  createdAt: 'createdAt'
+} as const
+
+export type CampaignIterationScalarFieldEnum = (typeof CampaignIterationScalarFieldEnum)[keyof typeof CampaignIterationScalarFieldEnum]
 
 
 export const CredentialScalarFieldEnum = {

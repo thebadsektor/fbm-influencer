@@ -18,6 +18,9 @@ export async function GET(
         orderBy: { createdAt: "asc" },
         include: { _count: { select: { results: true } } },
       },
+      iterations: {
+        orderBy: { iterationNumber: "asc" },
+      },
     },
   });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });

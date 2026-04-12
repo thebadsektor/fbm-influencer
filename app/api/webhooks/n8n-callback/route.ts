@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyN8nRequest } from "@/lib/verify-n8n-signature";
 import { n8nCallbackSchema, parseBody } from "@/lib/validations";
 import { triggerNextIteration } from "@/lib/discovery-loop";
+import { publishDiscoveryEvent } from "@/lib/redis";
 
 export async function POST(req: NextRequest) {
   const verified = await verifyN8nRequest(req);
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
       where: { id: khSetId },
       data: { status: "failed" },
     });
-    // Don't iterate on failure — let user investigate
+    await publishDiscoveryEvent(khSetId, "error", `Discovery failed: ${error}`);
     return NextResponse.json({ ok: true, status: "failed" });
   }
 
@@ -81,6 +82,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Publish results event
+  await publishDiscoveryEvent(khSetId, "results_received", `${newResultCount} creators discovered and saved`, {
+    count: newResultCount,
+  });
+
   // Mark this KH set as completed
   await prisma.kHSet.update({
     where: { id: khSetId },
@@ -89,6 +95,8 @@ export async function POST(req: NextRequest) {
       totalScraped: newResultCount,
     },
   });
+
+  await publishDiscoveryEvent(khSetId, "completed", `Discovery complete — ${newResultCount} leads saved`);
 
   // Auto-iteration: check if we should trigger the next round
   // This runs async — don't block the webhook response

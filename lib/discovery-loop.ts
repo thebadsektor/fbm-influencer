@@ -1,26 +1,28 @@
 import prisma from "@/lib/prisma";
-import { generateKHSet } from "@/lib/kh-generator";
+import { Prisma } from "@/app/generated/prisma/client";
+import { generateKHSet, type StrategyContext } from "@/lib/kh-generator";
+import { profileBatch, type CampaignContext } from "@/lib/affinity-profiler";
+import { analyzeIteration, type ExclusionPatterns } from "@/lib/iteration-analyzer";
+import { publishDiscoveryEvent } from "@/lib/redis";
 import type { LLMProvider } from "@/lib/llm";
 
-const MIN_NEW_LEADS_PER_RUN = 10; // Stop if diminishing returns
+const MIN_NEW_LEADS_PER_RUN = 10;
+const MIN_AVG_FIT_SCORE = 15; // Stop if average fit drops below this
 
 /**
- * After a discovery run completes, check if we should trigger the next iteration.
- *
- * Runs async — called from n8n-callback webhook after results are stored.
- *
- * Flow:
- * 1. Count total leads across all KH sets for this campaign
- * 2. Check campaign status (abort if "aborting")
- * 3. Check safety limits (max iterations, diminishing returns)
- * 4. If target not met → generate new KH set → submit to n8n
+ * After a discovery run completes, run the full intelligence pipeline:
+ * 1. Batch affinity profiling
+ * 2. Iteration analysis
+ * 3. Store memory
+ * 4. Intelligent stopping decision
+ * 5. Generate next KH set with strategy
+ * 6. Submit to n8n
  */
 export async function triggerNextIteration(
   campaignId: string,
   completedKhSetId: string,
   newResultCount: number
 ) {
-  // Load campaign with all KH sets
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
     include: {
@@ -29,113 +31,146 @@ export async function triggerNextIteration(
         include: { _count: { select: { results: true } } },
       },
       documents: true,
+      iterations: { orderBy: { iterationNumber: "asc" } },
     },
   });
 
   if (!campaign) return;
 
-  // Check if campaign is being aborted
+  // ── Abort check ──
   if (campaign.status === "aborting" || campaign.status === "aborted") {
-    await prisma.campaign.update({
-      where: { id: campaignId },
-      data: { status: "aborted" },
-    });
+    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "aborted" } });
     return;
   }
 
-  // Count total leads across all completed KH sets
-  const totalLeads = campaign.khSets
-    .filter((s) => s.status === "completed")
-    .reduce((sum, s) => sum + s._count.results, 0);
+  const completedSets = campaign.khSets.filter((s) => s.status === "completed");
+  const totalLeads = completedSets.reduce((sum, s) => sum + s._count.results, 0);
+  const completedIterations = completedSets.length;
 
-  // Check if target is met
+  // ── Target met check ──
   if (totalLeads >= campaign.targetLeads) {
-    await prisma.campaign.update({
-      where: { id: campaignId },
-      data: { status: "completed" },
-    });
-    console.log(
-      `[discovery-loop] Campaign ${campaignId}: target met (${totalLeads}/${campaign.targetLeads})`
-    );
+    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "completed" } });
+    await publishDiscoveryEvent(completedKhSetId, "campaign_completed",
+      `Target met! ${totalLeads}/${campaign.targetLeads} leads found in ${completedIterations} rounds.`);
     return;
   }
 
-  // Check iteration count
-  const completedIterations = campaign.khSets.filter(
-    (s) => s.status === "completed"
-  ).length;
+  // ── Max iterations check ──
   if (completedIterations >= campaign.maxIterations) {
-    await prisma.campaign.update({
-      where: { id: campaignId },
-      data: { status: "completed" },
-    });
-    console.log(
-      `[discovery-loop] Campaign ${campaignId}: max iterations reached (${completedIterations}/${campaign.maxIterations})`
-    );
+    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "completed" } });
+    await publishDiscoveryEvent(completedKhSetId, "campaign_completed",
+      `Max iterations reached (${completedIterations}). ${totalLeads}/${campaign.targetLeads} leads found.`);
     return;
   }
 
-  // Check diminishing returns (skip for first run)
+  // ── Diminishing returns (raw count) ──
   if (completedIterations > 1 && newResultCount < MIN_NEW_LEADS_PER_RUN) {
-    await prisma.campaign.update({
-      where: { id: campaignId },
-      data: { status: "completed" },
-    });
-    console.log(
-      `[discovery-loop] Campaign ${campaignId}: diminishing returns (${newResultCount} new leads, min ${MIN_NEW_LEADS_PER_RUN})`
-    );
+    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "completed" } });
+    await publishDiscoveryEvent(completedKhSetId, "campaign_completed",
+      `Diminishing returns — only ${newResultCount} new leads. Stopping.`);
     return;
   }
 
-  // Gather learning context from all previous results
-  const allPreviousKeywords = campaign.khSets.flatMap((s) => s.keywords);
-  const allPreviousHashtags = campaign.khSets.flatMap((s) => s.hashtags);
+  // ── PHASE 1: Batch Affinity Profiling ──
+  await prisma.campaign.update({ where: { id: campaignId }, data: { status: "profiling" } });
 
-  // Get themes and hashtags from scraped content (sample for efficiency)
-  const recentResults = await prisma.result.findMany({
-    where: { khSetId: completedKhSetId },
-    select: { hashtags: true, rawText: true },
-    take: 50,
+  const unprofiledResults = await prisma.result.findMany({
+    where: { khSetId: completedKhSetId, affinityProfile: { equals: Prisma.DbNull } },
+    select: {
+      id: true, platform: true, platformId: true,
+      creatorName: true, creatorHandle: true,
+      bio: true, rawText: true, hashtags: true,
+      followers: true, engagementRate: true,
+    },
   });
 
-  const topHashtagsFromContent = [
-    ...new Set(
-      recentResults
-        .flatMap((r) => (r.hashtags || "").split(", ").filter(Boolean))
-        .slice(0, 20)
-    ),
-  ];
+  const campaignContext: CampaignContext = {
+    name: campaign.name,
+    marketingGoal: campaign.marketingGoal,
+    brandNiche: campaign.brandNiche,
+    targetAudienceAge: campaign.targetAudienceAge,
+    targetLocation: campaign.targetLocation,
+    audienceInterests: campaign.audienceInterests,
+  };
 
-  // Extract themes from rawText (simple word frequency)
-  const themeWords = recentResults
-    .map((r) => r.rawText || "")
-    .join(" ")
-    .toLowerCase()
-    .split(/\s+/)
-    .filter((w) => w.length > 4);
-  const wordFreq = new Map<string, number>();
-  for (const w of themeWords) {
-    wordFreq.set(w, (wordFreq.get(w) || 0) + 1);
+  // Get exclusion patterns from last iteration (if any)
+  const lastIteration = campaign.iterations[campaign.iterations.length - 1];
+  const priorExclusions = lastIteration?.exclusionPatterns as unknown as ExclusionPatterns | undefined;
+
+  const profilingResult = await profileBatch(unprofiledResults, campaignContext, {
+    khSetId: completedKhSetId,
+    exclusionPatterns: priorExclusions as Record<string, unknown> | undefined,
+  });
+
+  // ── Abort check (profiling took time) ──
+  const refreshedCampaign = await prisma.campaign.findUnique({ where: { id: campaignId }, select: { status: true } });
+  if (refreshedCampaign?.status === "aborting") {
+    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "aborted" } });
+    return;
   }
-  const topCreatorThemes = [...wordFreq.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 15)
-    .map(([word]) => word);
 
-  // Update campaign status
-  await prisma.campaign.update({
-    where: { id: campaignId },
-    data: { status: "iterating" },
-  });
+  // ── Intelligent stopping: fit score quality ──
+  if (completedIterations > 1 && profilingResult.avgFitScore < MIN_AVG_FIT_SCORE) {
+    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "completed" } });
+    await publishDiscoveryEvent(completedKhSetId, "campaign_completed",
+      `Low quality — avg fit score ${profilingResult.avgFitScore}/100. Stopping to avoid wasted searches.`);
+    // Still save the iteration memory before stopping
+    await saveIterationMemory(campaignId, completedKhSetId, completedIterations,
+      campaign.khSets.find(s => s.id === completedKhSetId)!, profilingResult, null);
+    return;
+  }
 
-  const nextIteration = completedIterations + 1;
-  console.log(
-    `[discovery-loop] Campaign ${campaignId}: starting iteration ${nextIteration} (${totalLeads}/${campaign.targetLeads} leads)`
+  // ── PHASE 2: Iteration Analysis ──
+  await prisma.campaign.update({ where: { id: campaignId }, data: { status: "analyzing" } });
+
+  const currentKhSet = campaign.khSets.find((s) => s.id === completedKhSetId)!;
+  const previousIterationsData = campaign.iterations.map((i) => ({
+    iterationNumber: i.iterationNumber,
+    keywordsUsed: i.keywordsUsed,
+    hashtagsUsed: i.hashtagsUsed,
+    avgFitScore: i.avgFitScore,
+    topPerformingKeywords: i.topPerformingKeywords,
+    lowPerformingKeywords: i.lowPerformingKeywords,
+    learnings: i.learnings,
+    strategyForNext: i.strategyForNext,
+    exclusionPatterns: i.exclusionPatterns,
+  }));
+
+  const analysis = await analyzeIteration(
+    campaignId, completedKhSetId, profilingResult, campaignContext,
+    currentKhSet.keywords, currentKhSet.hashtags,
+    previousIterationsData
   );
 
-  // Generate new KH set with iteration context
+  // ── PHASE 3: Store Iteration Memory ──
+  await saveIterationMemory(campaignId, completedKhSetId, completedIterations,
+    currentKhSet, profilingResult, analysis);
+
+  // ── PHASE 4: Generate Next KH Set with Strategy ──
+  await prisma.campaign.update({ where: { id: campaignId }, data: { status: "iterating" } });
+
+  const nextIteration = completedIterations + 1;
+  await publishDiscoveryEvent(completedKhSetId, "iteration_preparing",
+    `Preparing iteration ${nextIteration} with strategy intelligence...`);
+
+  const allPreviousKeywords = campaign.khSets.flatMap((s) => s.keywords);
+  const allPreviousHashtags = campaign.khSets.flatMap((s) => s.hashtags);
+  const allLearnings = [...campaign.iterations.flatMap((i) => i.learnings), ...analysis.learnings];
+
+  const strategyContext: StrategyContext = {
+    topPerformingKeywords: analysis.topPerformingKeywords,
+    lowPerformingKeywords: analysis.lowPerformingKeywords,
+    exclusionPatterns: analysis.exclusionPatterns,
+    strategyRecommendation: analysis.strategyForNext,
+    accumulatedLearnings: allLearnings,
+    avgFitScoreByIteration: [
+      ...campaign.iterations.map((i) => i.avgFitScore),
+      profilingResult.avgFitScore,
+    ],
+  };
+
   const docContents = campaign.documents.map((d) => d.content);
-  const provider: LLMProvider = "openai"; // Default — could be stored on campaign
+  const provider: LLMProvider = "openai";
 
   try {
     const newSet = await generateKHSet({
@@ -152,40 +187,73 @@ export async function triggerNextIteration(
       previousHashtags: allPreviousHashtags,
       previousResults: {
         creatorsFound: totalLeads,
-        topCreatorThemes,
-        topHashtagsFromContent,
+        topCreatorThemes: Object.keys(profilingResult.contentThemeFrequency).slice(0, 15),
+        topHashtagsFromContent: Object.keys(analysis.contentThemeFrequency).slice(0, 20),
       },
+      strategyContext,
     });
 
-    // Auto-submit the new KH set to n8n
+    await publishDiscoveryEvent(completedKhSetId, "iteration_started",
+      `Round ${nextIteration} starting — ${newSet.keywords.length} new keywords, ${newSet.hashtags.length} new hashtags`);
+
     await submitKHSetToN8n(campaignId, newSet.id);
   } catch (err) {
     console.error("[discovery-loop] Iteration failed:", err);
-    await prisma.campaign.update({
-      where: { id: campaignId },
-      data: { status: "failed" },
-    });
+    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "failed" } });
+    await publishDiscoveryEvent(completedKhSetId, "error",
+      `Iteration ${nextIteration} failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
-/**
- * Submit a KH set to the n8n discovery webhook.
- * Extracted from the submit API route for reuse in auto-iteration.
- */
-async function submitKHSetToN8n(campaignId: string, khSetId: string) {
-  const campaign = await prisma.campaign.findUnique({
-    where: { id: campaignId },
-  });
-  const set = await prisma.kHSet.findUnique({ where: { id: khSetId } });
+// ── Helpers ──
 
+async function saveIterationMemory(
+  campaignId: string,
+  khSetId: string,
+  iterationNumber: number,
+  khSet: { keywords: string[]; hashtags: string[]; platform: string | null },
+  profiling: { profiledCount: number; skippedCount: number; avgFitScore: number; fitDistribution: Record<string, number>; contentThemeFrequency: Record<string, number>; cost: number; durationMs: number },
+  analysis: { topPerformingKeywords: string[]; lowPerformingKeywords: string[]; exclusionPatterns: ExclusionPatterns; contentThemeFrequency: Record<string, number>; analysisNarrative: string; strategyForNext: string; learnings: string[] } | null
+) {
+  await prisma.campaignIteration.create({
+    data: {
+      campaignId,
+      iterationNumber,
+      khSetId,
+      keywordsUsed: khSet.keywords,
+      hashtagsUsed: khSet.hashtags,
+      platformUsed: khSet.platform,
+      resultsCount: profiling.profiledCount + profiling.skippedCount,
+      profiledCount: profiling.profiledCount,
+      skippedCount: profiling.skippedCount,
+      avgFitScore: profiling.avgFitScore,
+      fitDistribution: JSON.parse(JSON.stringify(profiling.fitDistribution)),
+      topPerformingKeywords: analysis?.topPerformingKeywords ?? [],
+      lowPerformingKeywords: analysis?.lowPerformingKeywords ?? [],
+      exclusionPatterns: analysis?.exclusionPatterns ? JSON.parse(JSON.stringify(analysis.exclusionPatterns)) : undefined,
+      contentThemeFrequency: JSON.parse(JSON.stringify(profiling.contentThemeFrequency)),
+      analysisNarrative: analysis?.analysisNarrative ?? null,
+      strategyForNext: analysis?.strategyForNext ?? null,
+      learnings: analysis?.learnings ?? [],
+      profilingCost: profiling.cost,
+      profilingDuration: Math.round(profiling.durationMs / 1000),
+    },
+  });
+
+  await publishDiscoveryEvent(khSetId, "memory_saved",
+    `Iteration ${iterationNumber} memory saved — ${analysis?.learnings.length ?? 0} learnings recorded`);
+}
+
+async function submitKHSetToN8n(campaignId: string, khSetId: string) {
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
+  const set = await prisma.kHSet.findUnique({ where: { id: khSetId } });
   if (!campaign || !set) throw new Error("Campaign or KH set not found");
 
   const webhookId = process.env.N8N_WEBHOOK_ID;
   const baseUrl = process.env.N8N_BASE_URL;
   if (!webhookId || !baseUrl) throw new Error("N8N_WEBHOOK_ID or N8N_BASE_URL not configured");
 
-  const platform = "both"; // Auto-iteration always runs on both platforms
-
+  const platform = "both";
   const n8nPayload = {
     "Marketing Goal": campaign.marketingGoal,
     "Brand/Niche": campaign.brandNiche,
@@ -203,22 +271,14 @@ async function submitKHSetToN8n(campaignId: string, khSetId: string) {
     callbackUrl: `${process.env.APP_URL}/api/webhooks/n8n-callback`,
   };
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (process.env.N8N_API_KEY) {
-    headers["Authorization"] = `Bearer ${process.env.N8N_API_KEY}`;
-  }
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (process.env.N8N_API_KEY) headers["Authorization"] = `Bearer ${process.env.N8N_API_KEY}`;
 
   const response = await fetch(`${baseUrl}/webhook/${webhookId}`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(n8nPayload),
+    method: "POST", headers, body: JSON.stringify(n8nPayload),
   });
 
-  if (!response.ok) {
-    throw new Error(`n8n webhook returned ${response.status}`);
-  }
+  if (!response.ok) throw new Error(`n8n webhook returned ${response.status}`);
 
   await prisma.kHSet.update({
     where: { id: khSetId },
