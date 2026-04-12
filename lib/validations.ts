@@ -41,6 +41,7 @@ export const campaignPatchSchema = z.object({
   competitorBrands: z.string().nullish(),
   additionalKeywords: z.string().nullish(),
   status: z.string().optional(),
+  autoRun: z.boolean().optional(),
 });
 
 // ── KH Sets ────────────────────────────────────────────

@@ -123,6 +123,7 @@ interface Campaign {
   targetLeads: number;
   targetKeywords: number;
   targetHashtags: number;
+  autoRun: boolean;
   documents: { id: string; filename: string; createdAt: string }[];
   khSets: KHSetData[];
   iterations: IterationData[];
@@ -362,7 +363,10 @@ function TimelineRound({
     if (getDiscoveryStatus() !== "completed") return "pending";
     if (iteration && iteration.profiledCount > 0) return "completed";
     if (isLatest && campaignStatus === "profiling") return "active";
-    if (isLatest && ["analyzing", "awaiting_approval", "iterating"].includes(campaignStatus) && !iteration) return "failed";
+    // If campaign moved past profiling, profiling succeeded (iteration record comes later)
+    if (isLatest && ["analyzing", "awaiting_approval", "iterating"].includes(campaignStatus)) return "completed";
+    // Only show failed when campaign itself is failed
+    if (isLatest && campaignStatus === "failed") return "failed";
     return "pending";
   };
 
@@ -554,8 +558,10 @@ function TimelineRound({
           </div>
         )}
 
-        {/* Manual trigger — only when discovery done, no iteration yet, profiling not active */}
-        {!iteration && isLatest && khSet.status === "completed" && getProfilingStatus() !== "active" && !retrying && (
+        {/* Manual trigger — only when discovery done, profiling hasn't run, campaign not past profiling */}
+        {!iteration && isLatest && khSet.status === "completed"
+          && !["profiling", "analyzing", "awaiting_approval", "iterating"].includes(campaignStatus)
+          && !retrying && (
           <Button variant="outline" size="sm" onClick={handleRetryProfiling}>
             <RotateCcw className="h-3 w-3 mr-1" /> Run AI Profiling
           </Button>
@@ -569,6 +575,7 @@ function TimelineRound({
         icon={<Lightbulb className="h-4 w-4" />}
         summary={iteration?.learnings?.length ? `${iteration.learnings.length} learnings` : undefined}
         defaultExpanded={isLatest && (campaignStatus === "awaiting_approval" || getOptimizationStatus() === "active")}
+        paused={isLatest && campaignStatus === "awaiting_approval" && !autoRun}
         isLast
       >
         {iteration?.analysisNarrative && (
@@ -632,7 +639,6 @@ export default function CampaignDetailPage() {
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [aborting, setAborting] = useState(false);
-  const [autoRun, setAutoRun] = useState(true);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -766,15 +772,23 @@ export default function CampaignDetailPage() {
             <div className="flex items-center gap-2 flex-shrink-0 ml-4">
               {hasRuns && !["completed", "failed", "aborted"].includes(campaign.status) && (
                 <button
-                  onClick={() => setAutoRun(!autoRun)}
+                  onClick={async () => {
+                    const newVal = !campaign.autoRun;
+                    await fetch(`/api/campaigns/${params.id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ autoRun: newVal }),
+                    });
+                    await load();
+                  }}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
-                    autoRun
+                    campaign.autoRun
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-muted text-muted-foreground border-border"
                   }`}
                 >
-                  {autoRun ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
-                  {scrolled ? "" : `Auto-run ${autoRun ? "on" : "off"}`}
+                  {campaign.autoRun ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
+                  {scrolled ? "" : `Auto-run ${campaign.autoRun ? "on" : "off"}`}
                 </button>
               )}
               {!isActive && !hasRuns && (
@@ -832,7 +846,7 @@ export default function CampaignDetailPage() {
                   isLatest={idx === campaign.khSets.length - 1}
                   results={roundResults.get(set.id) || []}
                   onRefresh={load}
-                  autoRun={autoRun}
+                  autoRun={campaign.autoRun}
                 />
               );
             })}

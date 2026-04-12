@@ -267,6 +267,7 @@ model Campaign {
   additionalKeywords  String?
   targetLeads         Int        @default(2000)
   maxIterations       Int        @default(10)
+  autoRun             Boolean    @default(true)
   documents           Document[]
   khSets              KHSet[]
   iterations          CampaignIteration[]

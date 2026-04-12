@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronDown, RotateCcw, Loader2 } from "lucide-react";
+import { ChevronDown, RotateCcw, Loader2, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +17,7 @@ interface TimelineStepProps {
   defaultExpanded?: boolean;
   onRetry?: () => Promise<void>;
   retryLabel?: string;
+  paused?: boolean;
   isLast?: boolean;
   children?: React.ReactNode;
 }
@@ -31,6 +32,7 @@ export function TimelineStep({
   defaultExpanded,
   onRetry,
   retryLabel = "Retry",
+  paused = false,
   isLast = false,
   children,
 }: TimelineStepProps) {
@@ -50,12 +52,14 @@ export function TimelineStep({
     try { await onRetry(); } finally { setRetrying(false); }
   };
 
-  const dotColor = {
-    pending: "border-muted-foreground/30 bg-background",
-    active: "border-blue-500 bg-blue-500/20 animate-pulse",
-    completed: "border-green-500 bg-green-500",
-    failed: "border-red-500 bg-red-500",
-  }[status];
+  const dotColor = status === "active" && paused
+    ? "border-muted-foreground bg-muted-foreground/30"
+    : {
+        pending: "border-muted-foreground/30 bg-background",
+        active: "border-blue-500 bg-blue-500/20 animate-pulse",
+        completed: "border-green-500 bg-green-500",
+        failed: "border-red-500 bg-red-500",
+      }[status];
 
   const hasContent = status !== "pending" && children;
 
@@ -84,7 +88,8 @@ export function TimelineStep({
             {title}
           </span>
           {status === "completed" && <span className="text-green-500 text-xs font-medium">✓</span>}
-          {status === "active" && <Loader2 className="h-3 w-3 animate-spin text-blue-400" />}
+          {status === "active" && !paused && <Loader2 className="h-3 w-3 animate-spin text-blue-400" />}
+          {status === "active" && paused && <Pause className="h-3 w-3 text-muted-foreground" />}
           {status === "failed" && <span className="text-red-500 text-xs font-medium">✗</span>}
           {duration && <span className="text-xs text-muted-foreground">({duration})</span>}
           {cost && <span className="text-xs text-muted-foreground">${cost}</span>}

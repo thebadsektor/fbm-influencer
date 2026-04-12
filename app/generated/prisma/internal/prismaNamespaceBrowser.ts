@@ -320,6 +320,7 @@ export const CampaignScalarFieldEnum = {
   additionalKeywords: 'additionalKeywords',
   targetLeads: 'targetLeads',
   maxIterations: 'maxIterations',
+  autoRun: 'autoRun',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

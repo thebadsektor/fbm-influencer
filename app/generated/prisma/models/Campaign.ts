@@ -62,6 +62,7 @@ export type CampaignMinAggregateOutputType = {
   additionalKeywords: string | null
   targetLeads: number | null
   maxIterations: number | null
+  autoRun: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -84,6 +85,7 @@ export type CampaignMaxAggregateOutputType = {
   additionalKeywords: string | null
   targetLeads: number | null
   maxIterations: number | null
+  autoRun: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -108,6 +110,7 @@ export type CampaignCountAggregateOutputType = {
   additionalKeywords: number
   targetLeads: number
   maxIterations: number
+  autoRun: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -150,6 +153,7 @@ export type CampaignMinAggregateInputType = {
   additionalKeywords?: true
   targetLeads?: true
   maxIterations?: true
+  autoRun?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -172,6 +176,7 @@ export type CampaignMaxAggregateInputType = {
   additionalKeywords?: true
   targetLeads?: true
   maxIterations?: true
+  autoRun?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -196,6 +201,7 @@ export type CampaignCountAggregateInputType = {
   additionalKeywords?: true
   targetLeads?: true
   maxIterations?: true
+  autoRun?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -307,6 +313,7 @@ export type CampaignGroupByOutputType = {
   additionalKeywords: string | null
   targetLeads: number
   maxIterations: number
+  autoRun: boolean
   createdAt: Date
   updatedAt: Date
   _count: CampaignCountAggregateOutputType | null
@@ -354,6 +361,7 @@ export type CampaignWhereInput = {
   additionalKeywords?: Prisma.StringNullableFilter<"Campaign"> | string | null
   targetLeads?: Prisma.IntFilter<"Campaign"> | number
   maxIterations?: Prisma.IntFilter<"Campaign"> | number
+  autoRun?: Prisma.BoolFilter<"Campaign"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Campaign"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Campaign"> | Date | string
   user?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
@@ -382,6 +390,7 @@ export type CampaignOrderByWithRelationInput = {
   additionalKeywords?: Prisma.SortOrderInput | Prisma.SortOrder
   targetLeads?: Prisma.SortOrder
   maxIterations?: Prisma.SortOrder
+  autoRun?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
@@ -413,6 +422,7 @@ export type CampaignWhereUniqueInput = Prisma.AtLeast<{
   additionalKeywords?: Prisma.StringNullableFilter<"Campaign"> | string | null
   targetLeads?: Prisma.IntFilter<"Campaign"> | number
   maxIterations?: Prisma.IntFilter<"Campaign"> | number
+  autoRun?: Prisma.BoolFilter<"Campaign"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Campaign"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Campaign"> | Date | string
   user?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
@@ -441,6 +451,7 @@ export type CampaignOrderByWithAggregationInput = {
   additionalKeywords?: Prisma.SortOrderInput | Prisma.SortOrder
   targetLeads?: Prisma.SortOrder
   maxIterations?: Prisma.SortOrder
+  autoRun?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.CampaignCountOrderByAggregateInput
@@ -473,6 +484,7 @@ export type CampaignScalarWhereWithAggregatesInput = {
   additionalKeywords?: Prisma.StringNullableWithAggregatesFilter<"Campaign"> | string | null
   targetLeads?: Prisma.IntWithAggregatesFilter<"Campaign"> | number
   maxIterations?: Prisma.IntWithAggregatesFilter<"Campaign"> | number
+  autoRun?: Prisma.BoolWithAggregatesFilter<"Campaign"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Campaign"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Campaign"> | Date | string
 }
@@ -496,6 +508,7 @@ export type CampaignCreateInput = {
   additionalKeywords?: string | null
   targetLeads?: number
   maxIterations?: number
+  autoRun?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   user?: Prisma.UserCreateNestedOneWithoutCampaignsInput
@@ -524,6 +537,7 @@ export type CampaignUncheckedCreateInput = {
   additionalKeywords?: string | null
   targetLeads?: number
   maxIterations?: number
+  autoRun?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutCampaignInput
@@ -550,6 +564,7 @@ export type CampaignUpdateInput = {
   additionalKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   targetLeads?: Prisma.IntFieldUpdateOperationsInput | number
   maxIterations?: Prisma.IntFieldUpdateOperationsInput | number
+  autoRun?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneWithoutCampaignsNestedInput
@@ -578,6 +593,7 @@ export type CampaignUncheckedUpdateInput = {
   additionalKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   targetLeads?: Prisma.IntFieldUpdateOperationsInput | number
   maxIterations?: Prisma.IntFieldUpdateOperationsInput | number
+  autoRun?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutCampaignNestedInput
@@ -605,6 +621,7 @@ export type CampaignCreateManyInput = {
   additionalKeywords?: string | null
   targetLeads?: number
   maxIterations?: number
+  autoRun?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -628,6 +645,7 @@ export type CampaignUpdateManyMutationInput = {
   additionalKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   targetLeads?: Prisma.IntFieldUpdateOperationsInput | number
   maxIterations?: Prisma.IntFieldUpdateOperationsInput | number
+  autoRun?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -652,6 +670,7 @@ export type CampaignUncheckedUpdateManyInput = {
   additionalKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   targetLeads?: Prisma.IntFieldUpdateOperationsInput | number
   maxIterations?: Prisma.IntFieldUpdateOperationsInput | number
+  autoRun?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -686,6 +705,7 @@ export type CampaignCountOrderByAggregateInput = {
   additionalKeywords?: Prisma.SortOrder
   targetLeads?: Prisma.SortOrder
   maxIterations?: Prisma.SortOrder
+  autoRun?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -717,6 +737,7 @@ export type CampaignMaxOrderByAggregateInput = {
   additionalKeywords?: Prisma.SortOrder
   targetLeads?: Prisma.SortOrder
   maxIterations?: Prisma.SortOrder
+  autoRun?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -739,6 +760,7 @@ export type CampaignMinOrderByAggregateInput = {
   additionalKeywords?: Prisma.SortOrder
   targetLeads?: Prisma.SortOrder
   maxIterations?: Prisma.SortOrder
+  autoRun?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -886,6 +908,7 @@ export type CampaignCreateWithoutUserInput = {
   additionalKeywords?: string | null
   targetLeads?: number
   maxIterations?: number
+  autoRun?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   documents?: Prisma.DocumentCreateNestedManyWithoutCampaignInput
@@ -912,6 +935,7 @@ export type CampaignUncheckedCreateWithoutUserInput = {
   additionalKeywords?: string | null
   targetLeads?: number
   maxIterations?: number
+  autoRun?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutCampaignInput
@@ -968,6 +992,7 @@ export type CampaignScalarWhereInput = {
   additionalKeywords?: Prisma.StringNullableFilter<"Campaign"> | string | null
   targetLeads?: Prisma.IntFilter<"Campaign"> | number
   maxIterations?: Prisma.IntFilter<"Campaign"> | number
+  autoRun?: Prisma.BoolFilter<"Campaign"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Campaign"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Campaign"> | Date | string
 }
@@ -991,6 +1016,7 @@ export type CampaignCreateWithoutDocumentsInput = {
   additionalKeywords?: string | null
   targetLeads?: number
   maxIterations?: number
+  autoRun?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   user?: Prisma.UserCreateNestedOneWithoutCampaignsInput
@@ -1018,6 +1044,7 @@ export type CampaignUncheckedCreateWithoutDocumentsInput = {
   additionalKeywords?: string | null
   targetLeads?: number
   maxIterations?: number
+  autoRun?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   khSets?: Prisma.KHSetUncheckedCreateNestedManyWithoutCampaignInput
@@ -1059,6 +1086,7 @@ export type CampaignUpdateWithoutDocumentsInput = {
   additionalKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   targetLeads?: Prisma.IntFieldUpdateOperationsInput | number
   maxIterations?: Prisma.IntFieldUpdateOperationsInput | number
+  autoRun?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneWithoutCampaignsNestedInput
@@ -1086,6 +1114,7 @@ export type CampaignUncheckedUpdateWithoutDocumentsInput = {
   additionalKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   targetLeads?: Prisma.IntFieldUpdateOperationsInput | number
   maxIterations?: Prisma.IntFieldUpdateOperationsInput | number
+  autoRun?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   khSets?: Prisma.KHSetUncheckedUpdateManyWithoutCampaignNestedInput
@@ -1111,6 +1140,7 @@ export type CampaignCreateWithoutKhSetsInput = {
   additionalKeywords?: string | null
   targetLeads?: number
   maxIterations?: number
+  autoRun?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   user?: Prisma.UserCreateNestedOneWithoutCampaignsInput
@@ -1138,6 +1168,7 @@ export type CampaignUncheckedCreateWithoutKhSetsInput = {
   additionalKeywords?: string | null
   targetLeads?: number
   maxIterations?: number
+  autoRun?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutCampaignInput
@@ -1179,6 +1210,7 @@ export type CampaignUpdateWithoutKhSetsInput = {
   additionalKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   targetLeads?: Prisma.IntFieldUpdateOperationsInput | number
   maxIterations?: Prisma.IntFieldUpdateOperationsInput | number
+  autoRun?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneWithoutCampaignsNestedInput
@@ -1206,6 +1238,7 @@ export type CampaignUncheckedUpdateWithoutKhSetsInput = {
   additionalKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   targetLeads?: Prisma.IntFieldUpdateOperationsInput | number
   maxIterations?: Prisma.IntFieldUpdateOperationsInput | number
+  autoRun?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutCampaignNestedInput
@@ -1231,6 +1264,7 @@ export type CampaignCreateWithoutIterationsInput = {
   additionalKeywords?: string | null
   targetLeads?: number
   maxIterations?: number
+  autoRun?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   user?: Prisma.UserCreateNestedOneWithoutCampaignsInput
@@ -1258,6 +1292,7 @@ export type CampaignUncheckedCreateWithoutIterationsInput = {
   additionalKeywords?: string | null
   targetLeads?: number
   maxIterations?: number
+  autoRun?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutCampaignInput
@@ -1299,6 +1334,7 @@ export type CampaignUpdateWithoutIterationsInput = {
   additionalKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   targetLeads?: Prisma.IntFieldUpdateOperationsInput | number
   maxIterations?: Prisma.IntFieldUpdateOperationsInput | number
+  autoRun?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneWithoutCampaignsNestedInput
@@ -1326,6 +1362,7 @@ export type CampaignUncheckedUpdateWithoutIterationsInput = {
   additionalKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   targetLeads?: Prisma.IntFieldUpdateOperationsInput | number
   maxIterations?: Prisma.IntFieldUpdateOperationsInput | number
+  autoRun?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutCampaignNestedInput
@@ -1351,6 +1388,7 @@ export type CampaignCreateManyUserInput = {
   additionalKeywords?: string | null
   targetLeads?: number
   maxIterations?: number
+  autoRun?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1374,6 +1412,7 @@ export type CampaignUpdateWithoutUserInput = {
   additionalKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   targetLeads?: Prisma.IntFieldUpdateOperationsInput | number
   maxIterations?: Prisma.IntFieldUpdateOperationsInput | number
+  autoRun?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   documents?: Prisma.DocumentUpdateManyWithoutCampaignNestedInput
@@ -1400,6 +1439,7 @@ export type CampaignUncheckedUpdateWithoutUserInput = {
   additionalKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   targetLeads?: Prisma.IntFieldUpdateOperationsInput | number
   maxIterations?: Prisma.IntFieldUpdateOperationsInput | number
+  autoRun?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutCampaignNestedInput
@@ -1426,6 +1466,7 @@ export type CampaignUncheckedUpdateManyWithoutUserInput = {
   additionalKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   targetLeads?: Prisma.IntFieldUpdateOperationsInput | number
   maxIterations?: Prisma.IntFieldUpdateOperationsInput | number
+  autoRun?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1499,6 +1540,7 @@ export type CampaignSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   additionalKeywords?: boolean
   targetLeads?: boolean
   maxIterations?: boolean
+  autoRun?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.Campaign$userArgs<ExtArgs>
@@ -1528,6 +1570,7 @@ export type CampaignSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   additionalKeywords?: boolean
   targetLeads?: boolean
   maxIterations?: boolean
+  autoRun?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.Campaign$userArgs<ExtArgs>
@@ -1553,6 +1596,7 @@ export type CampaignSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   additionalKeywords?: boolean
   targetLeads?: boolean
   maxIterations?: boolean
+  autoRun?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.Campaign$userArgs<ExtArgs>
@@ -1578,11 +1622,12 @@ export type CampaignSelectScalar = {
   additionalKeywords?: boolean
   targetLeads?: boolean
   maxIterations?: boolean
+  autoRun?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type CampaignOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "status" | "userId" | "marketingGoal" | "brandNiche" | "targetAudienceAge" | "targetLocation" | "audienceInterests" | "minFollowers" | "minEngagementRate" | "numberOfInfluencers" | "targetKeywords" | "targetHashtags" | "trendingTopics" | "competitorBrands" | "additionalKeywords" | "targetLeads" | "maxIterations" | "createdAt" | "updatedAt", ExtArgs["result"]["campaign"]>
+export type CampaignOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "status" | "userId" | "marketingGoal" | "brandNiche" | "targetAudienceAge" | "targetLocation" | "audienceInterests" | "minFollowers" | "minEngagementRate" | "numberOfInfluencers" | "targetKeywords" | "targetHashtags" | "trendingTopics" | "competitorBrands" | "additionalKeywords" | "targetLeads" | "maxIterations" | "autoRun" | "createdAt" | "updatedAt", ExtArgs["result"]["campaign"]>
 export type CampaignInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.Campaign$userArgs<ExtArgs>
   documents?: boolean | Prisma.Campaign$documentsArgs<ExtArgs>
@@ -1625,6 +1670,7 @@ export type $CampaignPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     additionalKeywords: string | null
     targetLeads: number
     maxIterations: number
+    autoRun: boolean
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["campaign"]>
@@ -2073,6 +2119,7 @@ export interface CampaignFieldRefs {
   readonly additionalKeywords: Prisma.FieldRef<"Campaign", 'String'>
   readonly targetLeads: Prisma.FieldRef<"Campaign", 'Int'>
   readonly maxIterations: Prisma.FieldRef<"Campaign", 'Int'>
+  readonly autoRun: Prisma.FieldRef<"Campaign", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"Campaign", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Campaign", 'DateTime'>
 }
