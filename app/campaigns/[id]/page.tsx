@@ -619,6 +619,14 @@ export default function CampaignDetailPage() {
     await load(); setGenerating(false);
   };
 
+  // Track scroll for sticky header shrink (must be before early returns — hooks can't be conditional)
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 80);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   if (!campaign) {
     return <div className="py-12 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-muted-foreground" /><p className="text-sm text-muted-foreground">Loading campaign...</p></div>;
   }
@@ -628,14 +636,6 @@ export default function CampaignDetailPage() {
   const progress = Math.min(100, Math.round((totalLeads / campaign.targetLeads) * 100));
   const totalCost = (campaign.iterations || []).reduce((s, i) => s + (i.profilingCost ?? 0), 0);
   const isActive = !["draft", "completed", "aborted", "failed"].includes(campaign.status);
-
-  // Track scroll for sticky header shrink
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 80);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   return (
     <div className="max-w-4xl mx-auto pb-12">
