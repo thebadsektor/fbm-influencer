@@ -989,14 +989,6 @@ export type ResultUncheckedUpdateManyWithoutKhSetNestedInput = {
   deleteMany?: Prisma.ResultScalarWhereInput | Prisma.ResultScalarWhereInput[]
 }
 
-export type NullableFloatFieldUpdateOperationsInput = {
-  set?: number | null
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
 export type ResultCreateNestedOneWithoutEnrichmentRunsInput = {
   create?: Prisma.XOR<Prisma.ResultCreateWithoutEnrichmentRunsInput, Prisma.ResultUncheckedCreateWithoutEnrichmentRunsInput>
   connectOrCreate?: Prisma.ResultCreateOrConnectWithoutEnrichmentRunsInput

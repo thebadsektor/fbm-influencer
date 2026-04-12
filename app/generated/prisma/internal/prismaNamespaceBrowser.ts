@@ -321,6 +321,8 @@ export const CampaignScalarFieldEnum = {
   targetLeads: 'targetLeads',
   maxIterations: 'maxIterations',
   autoRun: 'autoRun',
+  enrichmentBudget: 'enrichmentBudget',
+  enrichAfterRounds: 'enrichAfterRounds',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

@@ -42,6 +42,8 @@ export const campaignPatchSchema = z.object({
   additionalKeywords: z.string().nullish(),
   status: z.string().optional(),
   autoRun: z.boolean().optional(),
+  enrichmentBudget: z.number().min(0).optional(),
+  enrichAfterRounds: z.number().int().min(0).optional(),
 });
 
 // ── KH Sets ────────────────────────────────────────────

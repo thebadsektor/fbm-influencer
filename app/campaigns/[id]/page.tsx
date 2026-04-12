@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table";
 import { TimelineStep, type StepStatus } from "@/components/campaign/TimelineStep";
 import { AutoPlayTimer } from "@/components/campaign/AutoPlayTimer";
+import { EnrichmentCard } from "@/components/campaign/EnrichmentCard";
 import type { LLMProvider } from "@/lib/llm";
 import { PROVIDER_LABELS } from "@/lib/llm";
 import { IDLE_MESSAGES } from "@/lib/idle-messages";
@@ -60,6 +61,7 @@ import {
   DollarSign,
   Clock,
   RotateCcw,
+  Pencil,
 } from "lucide-react";
 
 // ── Types ──
@@ -635,6 +637,9 @@ export default function CampaignDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState("");
+  const [emailCount, setEmailCount] = useState<{ total: number; withEmail: number } | null>(null);
   const [roundResults, setRoundResults] = useState<Map<string, Result[]>>(new Map());
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -657,6 +662,13 @@ export default function CampaignDetailPage() {
     if (!res.ok) return;
     const data = await res.json();
     setCampaign(data);
+    setNameValue(data.name);
+
+    // Fetch email stats
+    fetch(`/api/campaigns/${params.id}/enrichment/status`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((s) => s && setEmailCount({ total: s.emailStats.total, withEmail: s.emailStats.withEmail }))
+      .catch(() => {});
 
     // Fetch results for each KH set (lightweight — only fields needed for tables)
     for (const set of data.khSets) {
@@ -762,9 +774,34 @@ export default function CampaignDetailPage() {
           {/* Title + toggle row */}
           <div className={`flex items-center justify-between transition-all ${scrolled ? "py-3" : "pt-2 pb-3"}`}>
             <div className="min-w-0 flex-1">
-              <h1 className={`font-extrabold tracking-tight truncate transition-all ${scrolled ? "text-lg" : "text-3xl"}`}>
-                {campaign.name}
-              </h1>
+              {editingName ? (
+                <input
+                  autoFocus
+                  value={nameValue}
+                  onChange={(e) => setNameValue(e.target.value)}
+                  onBlur={async () => {
+                    if (nameValue.trim() && nameValue !== campaign.name) {
+                      await fetch(`/api/campaigns/${params.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ name: nameValue.trim() }),
+                      });
+                      await load();
+                    }
+                    setEditingName(false);
+                  }}
+                  onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") { setNameValue(campaign.name); setEditingName(false); } }}
+                  className={`font-extrabold tracking-tight bg-transparent border-b-2 border-primary outline-none w-full transition-all ${scrolled ? "text-lg" : "text-3xl"}`}
+                />
+              ) : (
+                <h1
+                  className={`font-extrabold tracking-tight truncate transition-all cursor-pointer group flex items-center gap-2 ${scrolled ? "text-lg" : "text-3xl"}`}
+                  onClick={() => setEditingName(true)}
+                >
+                  {campaign.name}
+                  <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </h1>
+              )}
               {!scrolled && (
                 <p className="text-lg text-muted-foreground mt-1">{campaign.brandNiche} &middot; {campaign.marketingGoal}</p>
               )}
@@ -807,6 +844,12 @@ export default function CampaignDetailPage() {
                   {totalLeads.toLocaleString()} <span className="text-xs font-normal text-muted-foreground">/ {campaign.targetLeads.toLocaleString()} leads</span>
                 </p>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  {emailCount && emailCount.total > 0 && (
+                    <span className="flex items-center gap-1">
+                      <Mail className="h-3 w-3" />
+                      {emailCount.withEmail} emails ({Math.round((emailCount.withEmail / emailCount.total) * 100)}%)
+                    </span>
+                  )}
                   {totalCost > 0 && <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />{totalCost.toFixed(2)}</span>}
                   <Badge variant={campaign.status === "completed" ? "default" : campaign.status === "failed" ? "destructive" : "secondary"} className="text-xs">
                     {campaign.status === "awaiting_approval" ? "planning next round" : campaign.status}
@@ -917,6 +960,10 @@ export default function CampaignDetailPage() {
             </CardContent>
           </Card>
         </>
+      )}
+      {/* Email Enrichment — always visible when results exist */}
+      {hasRuns && totalLeads > 0 && (
+        <EnrichmentCard campaignId={campaign.id} />
       )}
       </div>{/* close space-y-6 wrapper */}
     </div>

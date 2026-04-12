@@ -268,6 +268,8 @@ model Campaign {
   targetLeads         Int        @default(2000)
   maxIterations       Int        @default(10)
   autoRun             Boolean    @default(true)
+  enrichmentBudget    Float?
+  enrichAfterRounds   Int        @default(0)
   documents           Document[]
   khSets              KHSet[]
   iterations          CampaignIteration[]
