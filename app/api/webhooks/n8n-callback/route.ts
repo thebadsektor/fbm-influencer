@@ -3,6 +3,7 @@ import { Prisma } from "@/app/generated/prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyN8nRequest } from "@/lib/verify-n8n-signature";
 import { n8nCallbackSchema, parseBody } from "@/lib/validations";
+import { triggerNextIteration } from "@/lib/discovery-loop";
 
 export async function POST(req: NextRequest) {
   const verified = await verifyN8nRequest(req);
@@ -15,7 +16,10 @@ export async function POST(req: NextRequest) {
 
   const { khSetId, results, platform, error } = parsed.data;
 
-  const set = await prisma.kHSet.findUnique({ where: { id: khSetId } });
+  const set = await prisma.kHSet.findUnique({
+    where: { id: khSetId },
+    include: { campaign: true },
+  });
   if (!set) return NextResponse.json({ error: "KH set not found" }, { status: 404 });
 
   if (error) {
@@ -23,9 +27,12 @@ export async function POST(req: NextRequest) {
       where: { id: khSetId },
       data: { status: "failed" },
     });
+    // Don't iterate on failure — let user investigate
     return NextResponse.json({ ok: true, status: "failed" });
   }
 
+  // Store results
+  const newResultCount = Array.isArray(results) ? results.length : 0;
   if (Array.isArray(results)) {
     for (const r of results) {
       const rec = r as Record<string, unknown>;
@@ -74,10 +81,20 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Mark this KH set as completed
   await prisma.kHSet.update({
     where: { id: khSetId },
-    data: { status: "completed" },
+    data: {
+      status: "completed",
+      totalScraped: newResultCount,
+    },
   });
 
-  return NextResponse.json({ ok: true, status: "completed" });
+  // Auto-iteration: check if we should trigger the next round
+  // This runs async — don't block the webhook response
+  triggerNextIteration(set.campaignId, khSetId, newResultCount).catch((err) => {
+    console.error("[auto-iteration] Error:", err);
+  });
+
+  return NextResponse.json({ ok: true, status: "completed", resultsStored: newResultCount });
 }

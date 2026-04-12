@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MARKETING_GOALS, AGE_RANGES, LOCATIONS, INTERESTS, FOLLOWER_TIERS } from "@/lib/constants-influencer";
+import { MARKETING_GOALS } from "@/lib/constants-influencer";
 import type { LLMProvider } from "@/lib/llm";
 import { PROVIDER_LABELS } from "@/lib/llm";
 import {
@@ -117,19 +117,27 @@ function NewCampaignPageInner() {
   // Form state
   const [form, setForm] = useState({
     name: "",
-    marketingGoal: "Conversions",
+    marketingGoal: "Lead Generation",
     brandNiche: "",
+    targetLeads: 2000,
+    // Hidden fields — auto-filled by doc analysis, stored but not shown in form
     targetAudienceAge: "25-34 (Millennials)",
     targetLocation: ["US"] as string[],
     audienceInterests: [] as string[],
-    minFollowers: "50K",
+    minFollowers: "10000",
     minEngagementRate: 3,
     numberOfInfluencers: 25,
-    targetKeywords: 50,
-    targetHashtags: 30,
+    targetKeywords: 10,
+    targetHashtags: 10,
     trendingTopics: "",
     additionalKeywords: "",
   });
+
+  // Persist Target Leads default in localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("target-leads-default");
+    if (saved) setForm((prev) => ({ ...prev, targetLeads: Number(saved) || 2000 }));
+  }, []);
 
   // Basket import
   const [importedBasket, setImportedBasket] = useState<Basket | null>(null);
@@ -168,15 +176,6 @@ function NewCampaignPageInner() {
       }));
     }
   }, [searchParams]);
-
-  const toggleArray = (field: "targetLocation" | "audienceInterests", value: string) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: prev[field].includes(value)
-        ? prev[field].filter((v) => v !== value)
-        : [...prev[field], value],
-    }));
-  };
 
   // File selection only — no auto-trigger
   const handleFileSelect = (file: File) => {
@@ -487,171 +486,23 @@ function NewCampaignPageInner() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Target Keywords</Label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range"
-                    min={1}
-                    max={50}
-                    value={form.targetKeywords}
-                    onChange={(e) => setForm({ ...form, targetKeywords: Number(e.target.value) })}
-                    className="flex-1 h-2 rounded-lg appearance-none cursor-pointer bg-muted accent-primary"
-                  />
-                  <Input
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={form.targetKeywords}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setForm({ ...form, targetKeywords: v === "" ? 1 : Math.min(50, Math.max(1, parseInt(v) || 1)) });
-                    }}
-                    className="w-16 text-center"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Target Hashtags</Label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range"
-                    min={1}
-                    max={30}
-                    value={form.targetHashtags}
-                    onChange={(e) => setForm({ ...form, targetHashtags: Number(e.target.value) })}
-                    className="flex-1 h-2 rounded-lg appearance-none cursor-pointer bg-muted accent-primary"
-                  />
-                  <Input
-                    type="number"
-                    min={1}
-                    max={30}
-                    value={form.targetHashtags}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setForm({ ...form, targetHashtags: v === "" ? 1 : Math.min(30, Math.max(1, parseInt(v) || 1)) });
-                    }}
-                    className="w-16 text-center"
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="scroll-m-20 text-2xl font-semibold tracking-tight">Targeting</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Target Audience Age</Label>
-              <Select
-                value={form.targetAudienceAge}
-                onValueChange={(v) => v && setForm({ ...form, targetAudienceAge: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {AGE_RANGES.map((a) => (
-                    <SelectItem key={a} value={a}>
-                      {a}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Target Location</Label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {LOCATIONS.map((loc) => (
-                  <button
-                    key={loc}
-                    type="button"
-                    onClick={() => toggleArray("targetLocation", loc)}
-                    className={`px-3 py-1.5 rounded-full text-sm leading-none font-medium border transition-all ${
-                      form.targetLocation.includes(loc)
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-background border-border hover:border-primary/50"
-                    }`}
-                  >
-                    {loc}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Audience Interests</Label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {INTERESTS.map((interest) => (
-                  <button
-                    key={interest}
-                    type="button"
-                    onClick={() => toggleArray("audienceInterests", interest)}
-                    className={`px-3 py-1.5 rounded-full text-sm leading-none font-medium border transition-all ${
-                      form.audienceInterests.includes(interest)
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-background border-border hover:border-primary/50"
-                    }`}
-                  >
-                    {interest}
-                  </button>
-                ))}
-              </div>
-              {form.audienceInterests.length > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  {form.audienceInterests.length} selected
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Min Followers</Label>
-              <Select
-                value={form.minFollowers}
-                onValueChange={(v) => v && setForm({ ...form, minFollowers: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FOLLOWER_TIERS.map((f) => (
-                    <SelectItem key={f} value={f}>
-                      {f}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Min Engagement Rate (%)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  value={form.minEngagementRate}
-                  onChange={(e) =>
-                    setForm({ ...form, minEngagementRate: parseFloat(e.target.value) || 0 })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Number of Influencers</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={form.numberOfInfluencers}
-                  onChange={(e) =>
-                    setForm({ ...form, numberOfInfluencers: parseInt(e.target.value) || 1 })
-                  }
-                />
-              </div>
+              <Label>Target Leads</Label>
+              <p className="text-sm text-muted-foreground">
+                The system will automatically run multiple discovery rounds until this target is reached.
+              </p>
+              <Input
+                type="number"
+                min={100}
+                max={50000}
+                step={100}
+                value={form.targetLeads}
+                onChange={(e) => {
+                  const v = Math.max(100, parseInt(e.target.value) || 2000);
+                  setForm({ ...form, targetLeads: v });
+                  localStorage.setItem("target-leads-default", String(v));
+                }}
+              />
             </div>
           </CardContent>
         </Card>

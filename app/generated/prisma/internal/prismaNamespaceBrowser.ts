@@ -71,6 +71,7 @@ export const ModelName = {
   DocumentAnalysisCache: 'DocumentAnalysisCache',
   KHSet: 'KHSet',
   Result: 'Result',
+  EnrichmentRun: 'EnrichmentRun',
   Credential: 'Credential'
 } as const
 
@@ -316,6 +317,8 @@ export const CampaignScalarFieldEnum = {
   trendingTopics: 'trendingTopics',
   competitorBrands: 'competitorBrands',
   additionalKeywords: 'additionalKeywords',
+  targetLeads: 'targetLeads',
+  maxIterations: 'maxIterations',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -358,6 +361,7 @@ export const KHSetScalarFieldEnum = {
   platform: 'platform',
   n8nExecutionId: 'n8nExecutionId',
   parentSetId: 'parentSetId',
+  iterationNumber: 'iterationNumber',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   totalScraped: 'totalScraped',
@@ -377,19 +381,53 @@ export const ResultScalarFieldEnum = {
   id: 'id',
   khSetId: 'khSetId',
   platform: 'platform',
+  platformId: 'platformId',
   creatorName: 'creatorName',
   creatorHandle: 'creatorHandle',
   profileUrl: 'profileUrl',
   email: 'email',
   emailSource: 'emailSource',
+  emailType: 'emailType',
   confidence: 'confidence',
   followers: 'followers',
   engagementRate: 'engagementRate',
+  bio: 'bio',
+  rawText: 'rawText',
+  hashtags: 'hashtags',
+  crawlTargets: 'crawlTargets',
+  verified: 'verified',
+  avatar: 'avatar',
+  videoCount: 'videoCount',
+  totalViews: 'totalViews',
+  avgViews: 'avgViews',
+  avgLikes: 'avgLikes',
+  topVideoViews: 'topVideoViews',
+  scrapeHits: 'scrapeHits',
+  recentActivity: 'recentActivity',
   rawData: 'rawData',
+  affinityProfile: 'affinityProfile',
+  campaignFitScore: 'campaignFitScore',
   createdAt: 'createdAt'
 } as const
 
 export type ResultScalarFieldEnum = (typeof ResultScalarFieldEnum)[keyof typeof ResultScalarFieldEnum]
+
+
+export const EnrichmentRunScalarFieldEnum = {
+  id: 'id',
+  resultId: 'resultId',
+  workflow: 'workflow',
+  status: 'status',
+  input: 'input',
+  output: 'output',
+  error: 'error',
+  cost: 'cost',
+  executionId: 'executionId',
+  startedAt: 'startedAt',
+  completedAt: 'completedAt'
+} as const
+
+export type EnrichmentRunScalarFieldEnum = (typeof EnrichmentRunScalarFieldEnum)[keyof typeof EnrichmentRunScalarFieldEnum]
 
 
 export const CredentialScalarFieldEnum = {

@@ -404,6 +404,7 @@ export const ModelName = {
   DocumentAnalysisCache: 'DocumentAnalysisCache',
   KHSet: 'KHSet',
   Result: 'Result',
+  EnrichmentRun: 'EnrichmentRun',
   Credential: 'Credential'
 } as const
 
@@ -420,7 +421,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "notification" | "discussion" | "discussionVote" | "discussionReport" | "discussionView" | "comment" | "commentVote" | "session" | "account" | "verification" | "feedback" | "feedbackReply" | "feedbackNotificationEmail" | "subscription" | "campaign" | "document" | "documentAnalysisCache" | "kHSet" | "result" | "credential"
+    modelProps: "user" | "notification" | "discussion" | "discussionVote" | "discussionReport" | "discussionView" | "comment" | "commentVote" | "session" | "account" | "verification" | "feedback" | "feedbackReply" | "feedbackNotificationEmail" | "subscription" | "campaign" | "document" | "documentAnalysisCache" | "kHSet" | "result" | "enrichmentRun" | "credential"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1904,6 +1905,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    EnrichmentRun: {
+      payload: Prisma.$EnrichmentRunPayload<ExtArgs>
+      fields: Prisma.EnrichmentRunFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.EnrichmentRunFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentRunPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.EnrichmentRunFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentRunPayload>
+        }
+        findFirst: {
+          args: Prisma.EnrichmentRunFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentRunPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.EnrichmentRunFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentRunPayload>
+        }
+        findMany: {
+          args: Prisma.EnrichmentRunFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentRunPayload>[]
+        }
+        create: {
+          args: Prisma.EnrichmentRunCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentRunPayload>
+        }
+        createMany: {
+          args: Prisma.EnrichmentRunCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.EnrichmentRunCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentRunPayload>[]
+        }
+        delete: {
+          args: Prisma.EnrichmentRunDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentRunPayload>
+        }
+        update: {
+          args: Prisma.EnrichmentRunUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentRunPayload>
+        }
+        deleteMany: {
+          args: Prisma.EnrichmentRunDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.EnrichmentRunUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.EnrichmentRunUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentRunPayload>[]
+        }
+        upsert: {
+          args: Prisma.EnrichmentRunUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentRunPayload>
+        }
+        aggregate: {
+          args: Prisma.EnrichmentRunAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateEnrichmentRun>
+        }
+        groupBy: {
+          args: Prisma.EnrichmentRunGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EnrichmentRunGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.EnrichmentRunCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EnrichmentRunCountAggregateOutputType> | number
+        }
+      }
+    }
     Credential: {
       payload: Prisma.$CredentialPayload<ExtArgs>
       fields: Prisma.CredentialFieldRefs
@@ -2243,6 +2318,8 @@ export const CampaignScalarFieldEnum = {
   trendingTopics: 'trendingTopics',
   competitorBrands: 'competitorBrands',
   additionalKeywords: 'additionalKeywords',
+  targetLeads: 'targetLeads',
+  maxIterations: 'maxIterations',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -2285,6 +2362,7 @@ export const KHSetScalarFieldEnum = {
   platform: 'platform',
   n8nExecutionId: 'n8nExecutionId',
   parentSetId: 'parentSetId',
+  iterationNumber: 'iterationNumber',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   totalScraped: 'totalScraped',
@@ -2304,19 +2382,53 @@ export const ResultScalarFieldEnum = {
   id: 'id',
   khSetId: 'khSetId',
   platform: 'platform',
+  platformId: 'platformId',
   creatorName: 'creatorName',
   creatorHandle: 'creatorHandle',
   profileUrl: 'profileUrl',
   email: 'email',
   emailSource: 'emailSource',
+  emailType: 'emailType',
   confidence: 'confidence',
   followers: 'followers',
   engagementRate: 'engagementRate',
+  bio: 'bio',
+  rawText: 'rawText',
+  hashtags: 'hashtags',
+  crawlTargets: 'crawlTargets',
+  verified: 'verified',
+  avatar: 'avatar',
+  videoCount: 'videoCount',
+  totalViews: 'totalViews',
+  avgViews: 'avgViews',
+  avgLikes: 'avgLikes',
+  topVideoViews: 'topVideoViews',
+  scrapeHits: 'scrapeHits',
+  recentActivity: 'recentActivity',
   rawData: 'rawData',
+  affinityProfile: 'affinityProfile',
+  campaignFitScore: 'campaignFitScore',
   createdAt: 'createdAt'
 } as const
 
 export type ResultScalarFieldEnum = (typeof ResultScalarFieldEnum)[keyof typeof ResultScalarFieldEnum]
+
+
+export const EnrichmentRunScalarFieldEnum = {
+  id: 'id',
+  resultId: 'resultId',
+  workflow: 'workflow',
+  status: 'status',
+  input: 'input',
+  output: 'output',
+  error: 'error',
+  cost: 'cost',
+  executionId: 'executionId',
+  startedAt: 'startedAt',
+  completedAt: 'completedAt'
+} as const
+
+export type EnrichmentRunScalarFieldEnum = (typeof EnrichmentRunScalarFieldEnum)[keyof typeof EnrichmentRunScalarFieldEnum]
 
 
 export const CredentialScalarFieldEnum = {
@@ -2582,6 +2694,7 @@ export type GlobalOmitConfig = {
   documentAnalysisCache?: Prisma.DocumentAnalysisCacheOmit
   kHSet?: Prisma.KHSetOmit
   result?: Prisma.ResultOmit
+  enrichmentRun?: Prisma.EnrichmentRunOmit
   credential?: Prisma.CredentialOmit
 }
 

@@ -6,8 +6,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import type { LLMProvider } from "@/lib/llm";
 import { PROVIDER_LABELS } from "@/lib/llm";
@@ -17,18 +15,32 @@ import {
   FileText,
   FileCode,
   File,
-  Hash,
   Sparkles,
   Loader2,
   ChevronDown,
   X,
   Trash2,
-  ShoppingBag,
+  Users,
+  Target,
+  StopCircle,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
 } from "lucide-react";
-import ImportBasketDialog from "@/components/dashboard/ImportBasketDialog";
-import type { BasketItem } from "@/lib/basket";
 
 const PROVIDERS: LLMProvider[] = ["openai", "anthropic", "gemini"];
+
+interface KHSetSummary {
+  id: string;
+  status: string;
+  locked: boolean;
+  keywords: string[];
+  hashtags: string[];
+  iterationNumber: number;
+  createdAt: string;
+  _count?: { results: number };
+  totalScraped: number;
+}
 
 interface Campaign {
   id: string;
@@ -36,26 +48,11 @@ interface Campaign {
   status: string;
   marketingGoal: string;
   brandNiche: string;
-  targetAudienceAge: string;
-  targetLocation: string[];
-  audienceInterests: string[];
-  minFollowers: string;
-  minEngagementRate: number;
-  numberOfInfluencers: number;
+  targetLeads: number;
   targetKeywords: number;
   targetHashtags: number;
-  trendingTopics: string | null;
-  competitorBrands: string | null;
-  additionalKeywords: string | null;
   documents: { id: string; filename: string; createdAt: string }[];
-  khSets: {
-    id: string;
-    status: string;
-    locked: boolean;
-    keywords: string[];
-    hashtags: string[];
-    createdAt: string;
-  }[];
+  khSets: KHSetSummary[];
 }
 
 function getFileIcon(filename: string) {
@@ -64,17 +61,142 @@ function getFileIcon(filename: string) {
   return <File className="h-4 w-4 text-muted-foreground" />;
 }
 
+function statusBadgeVariant(status: string) {
+  switch (status) {
+    case "completed": return "default" as const;
+    case "failed": case "aborted": return "destructive" as const;
+    case "discovering": case "iterating": case "processing": return "secondary" as const;
+    default: return "outline" as const;
+  }
+}
+
+function ProgressView({ campaign, onAbort, onRefresh }: {
+  campaign: Campaign;
+  onAbort: () => void;
+  onRefresh: () => void;
+}) {
+  const totalLeads = campaign.khSets
+    .filter((s) => s.status === "completed")
+    .reduce((sum, s) => s.totalScraped || (s._count?.results ?? 0), 0);
+  const progress = Math.min(100, Math.round((totalLeads / campaign.targetLeads) * 100));
+  const isRunning = ["discovering", "iterating", "aborting"].includes(campaign.status);
+  const isProcessing = campaign.khSets.some((s) => s.status === "processing");
+
+  return (
+    <div className="space-y-6">
+      {/* Progress Header */}
+      <Card>
+        <CardContent className="pt-6 pb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Discovery Progress</p>
+              <p className="text-3xl font-bold">
+                {totalLeads.toLocaleString()} <span className="text-lg font-normal text-muted-foreground">/ {campaign.targetLeads.toLocaleString()} leads</span>
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {campaign.status === "completed" && (
+                <Badge variant="default" className="text-sm gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> Complete
+                </Badge>
+              )}
+              {campaign.status === "aborting" && (
+                <Badge variant="secondary" className="text-sm gap-1 animate-pulse">
+                  <Clock className="h-3 w-3" /> Stopping after current run...
+                </Badge>
+              )}
+              {campaign.status === "aborted" && (
+                <Badge variant="destructive" className="text-sm gap-1">
+                  <StopCircle className="h-3 w-3" /> Aborted
+                </Badge>
+              )}
+              {campaign.status === "failed" && (
+                <Badge variant="destructive" className="text-sm gap-1">
+                  <AlertCircle className="h-3 w-3" /> Failed
+                </Badge>
+              )}
+              {isRunning && campaign.status !== "aborting" && (
+                <Button variant="destructive" size="sm" onClick={onAbort}>
+                  <StopCircle className="h-4 w-4 mr-1" /> Abort
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                campaign.status === "completed"
+                  ? "bg-green-500"
+                  : campaign.status === "failed" || campaign.status === "aborted"
+                  ? "bg-destructive"
+                  : "bg-primary"
+              } ${isProcessing ? "animate-pulse" : ""}`}
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            {progress}% complete &middot; {campaign.khSets.filter((s) => s.status === "completed").length} iterations completed
+            {isProcessing && " \u00b7 Running..."}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Iteration List */}
+      <div>
+        <h3 className="scroll-m-20 text-xl font-semibold tracking-tight mb-3">Discovery Rounds</h3>
+        <div className="space-y-2">
+          {campaign.khSets
+            .sort((a, b) => a.iterationNumber - b.iterationNumber)
+            .map((set) => (
+              <Link
+                key={set.id}
+                href={`/campaigns/${campaign.id}/kh-sets/${set.id}`}
+                className="block"
+              >
+                <div className="flex items-center justify-between p-4 rounded-lg border hover:border-primary/50 hover:shadow-sm transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-sm font-bold">
+                      {set.iterationNumber}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">
+                        Round {set.iterationNumber} &middot; {set.keywords.length} keywords, {set.hashtags.length} hashtags
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {set.status === "completed"
+                          ? `${set.totalScraped || set._count?.results || 0} leads found`
+                          : set.status === "processing"
+                          ? "Discovering..."
+                          : set.status}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant={statusBadgeVariant(set.status)}>
+                    {set.status === "processing" && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                    {set.status}
+                  </Badge>
+                </div>
+              </Link>
+            ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CampaignDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [importBasketOpen, setImportBasketOpen] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
+  const [aborting, setAborting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
 
-  // Provider state — persisted in localStorage
+  // Provider state
   const [provider, setProvider] = useState<LLMProvider>("openai");
   const [providerMenuOpen, setProviderMenuOpen] = useState(false);
   useEffect(() => {
@@ -87,28 +209,22 @@ export default function CampaignDetailPage() {
     setProviderMenuOpen(false);
   };
 
-  // KH generation controls — initialized from campaign targets after load
-  const [minKeywords, setMinKeywords] = useState(5);
-  const [maxKeywords, setMaxKeywords] = useState(5);
-  const [minHashtags, setMinHashtags] = useState(5);
-  const [maxHashtags, setMaxHashtags] = useState(5);
-
   const load = useCallback(async () => {
     const res = await fetch(`/api/campaigns/${params.id}`);
-    if (res.ok) {
-      const data = await res.json();
-      setCampaign(data);
-      // Initialize generation controls from campaign targets
-      setMinKeywords(data.targetKeywords ?? 5);
-      setMaxKeywords(data.targetKeywords ?? 5);
-      setMinHashtags(data.targetHashtags ?? 5);
-      setMaxHashtags(data.targetHashtags ?? 5);
-    }
+    if (res.ok) setCampaign(await res.json());
   }, [params.id]);
 
+  useEffect(() => { load(); }, [load]);
+
+  // Poll while discovering/iterating
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!campaign) return;
+    const isActive = ["discovering", "iterating", "aborting"].includes(campaign.status) ||
+      campaign.khSets.some((s) => s.status === "processing");
+    if (!isActive) return;
+    const interval = setInterval(load, 5000);
+    return () => clearInterval(interval);
+  }, [campaign, load]);
 
   const uploadFile = async (file: File) => {
     setUploading(true);
@@ -122,19 +238,14 @@ export default function CampaignDetailPage() {
   const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    for (const file of Array.from(files)) {
-      await uploadFile(file);
-    }
+    for (const file of Array.from(files)) await uploadFile(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    const files = Array.from(e.dataTransfer.files);
-    for (const file of files) {
-      await uploadFile(file);
-    }
+    for (const file of Array.from(e.dataTransfer.files)) await uploadFile(file);
   };
 
   const deleteDocument = async (documentId: string) => {
@@ -152,12 +263,25 @@ export default function CampaignDetailPage() {
     if (res.ok) router.push("/campaigns");
   };
 
+  const handleAbort = async () => {
+    setAborting(true);
+    await fetch(`/api/campaigns/${params.id}/abort`, { method: "POST" });
+    await load();
+    setAborting(false);
+  };
+
   const handleGenerate = async () => {
     setGenerating(true);
     const res = await fetch(`/api/campaigns/${params.id}/kh-sets`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ minKeywords, maxKeywords, minHashtags, maxHashtags, provider }),
+      body: JSON.stringify({
+        minKeywords: campaign?.targetKeywords ?? 10,
+        maxKeywords: campaign?.targetKeywords ?? 10,
+        minHashtags: campaign?.targetHashtags ?? 10,
+        maxHashtags: campaign?.targetHashtags ?? 10,
+        provider,
+      }),
     });
     if (res.ok) {
       const set = await res.json();
@@ -174,6 +298,10 @@ export default function CampaignDetailPage() {
       </div>
     );
   }
+
+  const hasRuns = campaign.khSets.length > 0;
+  const isActive = ["discovering", "iterating", "aborting"].includes(campaign.status) ||
+    campaign.khSets.some((s) => s.status === "processing");
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -194,332 +322,139 @@ export default function CampaignDetailPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={campaign.status === "active" ? "default" : "secondary"} className="text-sm">
+          <Badge variant={statusBadgeVariant(campaign.status)} className="text-sm">
             {campaign.status}
           </Badge>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={deleteCampaign}
-            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-            title="Delete campaign"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Campaign Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <p className="text-sm text-muted-foreground">Age</p>
-            <p className="text-lg font-semibold">{campaign.targetAudienceAge}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <p className="text-sm text-muted-foreground">Location</p>
-            <p className="text-lg font-semibold">{campaign.targetLocation.join(", ")}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <p className="text-sm text-muted-foreground">Min Followers</p>
-            <p className="text-lg font-semibold">{campaign.minFollowers}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <p className="text-sm text-muted-foreground">Engagement</p>
-            <p className="text-lg font-semibold">{campaign.minEngagementRate}%+</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {campaign.audienceInterests.length > 0 && (
-        <div>
-          <h4 className="scroll-m-20 text-xl font-semibold tracking-tight mb-2">Interests</h4>
-          <div className="flex flex-wrap gap-2">
-            {campaign.audienceInterests.map((i) => (
-              <Badge key={i} variant="outline">{i}</Badge>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <Separator />
-
-      {/* Document Upload */}
-      <div>
-        <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0 mb-4 flex items-center gap-2">
-          <FileText className="h-7 w-7" />
-          Documents
-        </h2>
-        <p className="leading-7 text-muted-foreground mb-4">
-          Upload additional PDF or Markdown files to provide more context for keyword generation.
-        </p>
-
-        {/* Uploaded Files List */}
-        {campaign.documents.length > 0 && (
-          <div className="space-y-2 mb-4">
-            {campaign.documents.map((d) => (
-              <div
-                key={d.id}
-                className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border"
-              >
-                {getFileIcon(d.filename)}
-                <span className="text-sm leading-none font-medium flex-1">{d.filename}</span>
-                <span className="text-sm text-muted-foreground">
-                  {new Date(d.createdAt).toLocaleDateString()}
-                </span>
-                <button
-                  onClick={() => deleteDocument(d.id)}
-                  className="ml-1 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                  title="Remove document"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Drag & Drop Zone */}
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={`relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all ${
-            dragOver
-              ? "border-primary bg-primary/5"
-              : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50"
-          }`}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.md,.txt"
-            multiple
-            className="hidden"
-            onChange={handleFileInput}
-            disabled={uploading}
-          />
-          {uploading ? (
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm leading-none font-medium">Uploading...</p>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2">
-              <Upload className="h-8 w-8 text-muted-foreground/50" />
-              <p className="text-lg font-semibold">Drop files here or click to browse</p>
-              <p className="text-sm text-muted-foreground">
-                Supports PDF, Markdown, and text files
-              </p>
-            </div>
+          {!isActive && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={deleteCampaign}
+              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              title="Delete campaign"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           )}
         </div>
       </div>
 
-      <Separator />
+      {/* Show progress view when campaign has runs */}
+      {hasRuns && (
+        <ProgressView campaign={campaign} onAbort={handleAbort} onRefresh={load} />
+      )}
 
-      {/* KH Generation */}
-      <div>
-        <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0 mb-4 flex items-center gap-2">
-          <Hash className="h-7 w-7" />
-          Keywords & Hashtags
-        </h2>
-        <p className="leading-7 text-muted-foreground mb-4">
-          Generate keywords and hashtags from your campaign data and uploaded documents.
-        </p>
+      {/* Draft state: show document management + generate button */}
+      {campaign.status === "draft" && (
+        <>
+          <Separator />
 
-        {/* Generation Controls */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              Generation Settings
-            </CardTitle>
-            <CardDescription>
-              Control how many keywords and hashtags to generate.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Min Keywords</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={minKeywords}
-                  onChange={(e) => setMinKeywords(parseInt(e.target.value) || 1)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Max Keywords</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={maxKeywords}
-                  onChange={(e) => setMaxKeywords(parseInt(e.target.value) || 1)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Min Hashtags</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={minHashtags}
-                  onChange={(e) => setMinHashtags(parseInt(e.target.value) || 1)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Max Hashtags</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={maxHashtags}
-                  onChange={(e) => setMaxHashtags(parseInt(e.target.value) || 1)}
-                />
-              </div>
-            </div>
-            <div className="flex gap-0">
-              <Button onClick={handleGenerate} disabled={generating} className="flex-1 rounded-r-none" size="lg">
-                {generating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generating with {PROVIDER_LABELS[provider]}...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Generate with {PROVIDER_LABELS[provider]}
-                  </>
-                )}
-              </Button>
-              <div className="relative">
-                <Button
-                  variant="default"
-                  size="lg"
-                  className="rounded-l-none border-l border-l-primary-foreground/20 px-3"
-                  onClick={() => setProviderMenuOpen(!providerMenuOpen)}
-                  disabled={generating}
-                >
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-                {providerMenuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setProviderMenuOpen(false)} />
-                    <div className="absolute right-0 top-full mt-1 z-50 w-44 rounded-md border bg-popover p-1 shadow-md">
-                      {PROVIDERS.map((p) => (
-                        <button
-                          key={p}
-                          onClick={() => changeProvider(p)}
-                          className={`w-full text-left px-3 py-2 text-sm rounded-sm transition-colors ${
-                            p === provider
-                              ? "bg-accent text-accent-foreground font-medium"
-                              : "hover:bg-accent hover:text-accent-foreground"
-                          }`}
-                        >
-                          {PROVIDER_LABELS[p]}
-                          {p === provider && " ✓"}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="lg"
-              className="w-full mt-3"
-              onClick={() => setImportBasketOpen(true)}
-            >
-              <ShoppingBag className="h-4 w-4 mr-2" />
-              Import from Basket
-            </Button>
-          </CardContent>
-        </Card>
+          {/* Documents */}
+          <div>
+            <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight mb-4 flex items-center gap-2">
+              <FileText className="h-7 w-7" />
+              Documents
+            </h2>
 
-        {/* Existing KH Sets */}
-        {campaign.khSets.length > 0 && (
-          <div className="mt-6">
-            <h3 className="scroll-m-20 text-2xl font-semibold tracking-tight mb-3">Previous Sets</h3>
-            <div className="space-y-2">
-              {campaign.khSets.map((set) => (
-                <Link
-                  key={set.id}
-                  href={`/campaigns/${campaign.id}/kh-sets/${set.id}`}
-                  className="block"
-                >
-                  <div className="flex items-center justify-between p-4 rounded-lg border hover:border-primary/50 hover:shadow-sm transition-all">
-                    <div>
-                      <p className="text-sm leading-none font-medium">
-                        {set.keywords.length} keywords, {set.hashtags.length} hashtags
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {new Date(set.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                    <Badge
-                      variant={
-                        set.status === "completed"
-                          ? "default"
-                          : set.status === "failed"
-                          ? "destructive"
-                          : "secondary"
-                      }
+            {campaign.documents.length > 0 && (
+              <div className="space-y-2 mb-4">
+                {campaign.documents.map((d) => (
+                  <div key={d.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                    {getFileIcon(d.filename)}
+                    <span className="text-sm font-medium flex-1">{d.filename}</span>
+                    <span className="text-sm text-muted-foreground">{new Date(d.createdAt).toLocaleDateString()}</span>
+                    <button
+                      onClick={() => deleteDocument(d.id)}
+                      className="ml-1 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                     >
-                      {set.locked ? "🔒 " : ""}
-                      {set.status}
-                    </Badge>
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
-                </Link>
-              ))}
+                ))}
+              </div>
+            )}
+
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all ${
+                dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50"
+              }`}
+            >
+              <input ref={fileInputRef} type="file" accept=".pdf,.md,.txt" multiple className="hidden" onChange={handleFileInput} disabled={uploading} />
+              {uploading ? (
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm font-medium">Uploading...</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <Upload className="h-8 w-8 text-muted-foreground/50" />
+                  <p className="text-lg font-semibold">Drop files here or click to browse</p>
+                  <p className="text-sm text-muted-foreground">PDF, Markdown, and text files</p>
+                </div>
+              )}
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Import Basket Dialog */}
-      <ImportBasketDialog
-        open={importBasketOpen}
-        onClose={() => setImportBasketOpen(false)}
-        filterTypes={["keyword", "hashtag"]}
-        onImport={async (items: BasketItem[]) => {
-          const keywords = items.filter((i) => i.type === "keyword").map((i) => i.label);
-          const hashtags = items.filter((i) => i.type === "hashtag").map((i) => {
-            const label = i.label;
-            return label.startsWith("#") ? label : `#${label}`;
-          });
-          if (keywords.length === 0 && hashtags.length === 0) return;
-          // Create a new KH set with imported items
-          const res = await fetch(`/api/campaigns/${params.id}/kh-sets`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              minKeywords: keywords.length || 1,
-              maxKeywords: keywords.length || 1,
-              minHashtags: hashtags.length || 1,
-              maxHashtags: hashtags.length || 1,
-              provider,
-              importedKeywords: keywords,
-              importedHashtags: hashtags,
-            }),
-          });
-          if (res.ok) {
-            const set = await res.json();
-            router.push(`/campaigns/${campaign!.id}/kh-sets/${set.id}`);
-          }
-        }}
-      />
+          {/* Quick Actions */}
+          <Card>
+            <CardContent className="pt-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium flex items-center gap-2">
+                    <Target className="h-4 w-4" />
+                    Target: {campaign.targetLeads.toLocaleString()} leads
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {campaign.documents.length} document{campaign.documents.length !== 1 ? "s" : ""} uploaded
+                  </p>
+                </div>
+                <div className="flex gap-0">
+                  <Button onClick={handleGenerate} disabled={generating || campaign.documents.length === 0} size="lg" className="rounded-r-none">
+                    {generating ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating...</>
+                    ) : (
+                      <><Sparkles className="h-4 w-4 mr-2" />Start Discovery</>
+                    )}
+                  </Button>
+                  <div className="relative">
+                    <Button
+                      variant="default"
+                      size="lg"
+                      className="rounded-l-none border-l border-l-primary-foreground/20 px-3"
+                      onClick={() => setProviderMenuOpen(!providerMenuOpen)}
+                      disabled={generating}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                    {providerMenuOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setProviderMenuOpen(false)} />
+                        <div className="absolute right-0 top-full mt-1 z-50 w-44 rounded-md border bg-popover p-1 shadow-md">
+                          {PROVIDERS.map((p) => (
+                            <button
+                              key={p}
+                              onClick={() => changeProvider(p)}
+                              className={`w-full text-left px-3 py-2 text-sm rounded-sm transition-colors ${
+                                p === provider ? "bg-accent text-accent-foreground font-medium" : "hover:bg-accent hover:text-accent-foreground"
+                              }`}
+                            >
+                              {PROVIDER_LABELS[p]}{p === provider && " \u2713"}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }

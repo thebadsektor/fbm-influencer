@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
       await prisma.result.update({
         where: { id: result.id },
         data: {
-          affinityProfile: affinityProfile as Record<string, unknown>,
+          affinityProfile: JSON.parse(JSON.stringify(affinityProfile)),
         },
       });
     }

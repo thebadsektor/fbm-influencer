@@ -61,8 +61,9 @@ export async function POST(req: NextRequest) {
           minFollowers: body.minFollowers,
           minEngagementRate: body.minEngagementRate ?? 3,
           numberOfInfluencers: body.numberOfInfluencers ?? 25,
-          targetKeywords: body.targetKeywords ?? 5,
-          targetHashtags: body.targetHashtags ?? 5,
+          targetKeywords: body.targetKeywords ?? 10,
+          targetHashtags: body.targetHashtags ?? 10,
+          targetLeads: body.targetLeads ?? 2000,
           trendingTopics: body.trendingTopics,
           competitorBrands: body.competitorBrands,
           additionalKeywords: body.additionalKeywords,
@@ -95,8 +96,8 @@ export async function POST(req: NextRequest) {
   if (body.documentContent) {
     try {
       const provider: LLMProvider = body.provider ?? "openai";
-      const targetKw = body.targetKeywords ?? 5;
-      const targetHt = body.targetHashtags ?? 5;
+      const targetKw = body.targetKeywords ?? 10;
+      const targetHt = body.targetHashtags ?? 10;
 
       const khSet = await generateKHSet({
         campaignId: campaign.id,

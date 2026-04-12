@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
         resultId: result.id,
         workflow,
         status: "pending",
-        input: result as Record<string, unknown>,
+        input: JSON.parse(JSON.stringify(result)),
       },
     });
 

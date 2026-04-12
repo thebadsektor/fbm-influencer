@@ -12,7 +12,13 @@ export async function GET(
 
   const campaign = await prisma.campaign.findFirst({
     where: { id, userId: user.id },
-    include: { documents: true, khSets: { orderBy: { createdAt: "desc" } } },
+    include: {
+      documents: true,
+      khSets: {
+        orderBy: { createdAt: "asc" },
+        include: { _count: { select: { results: true } } },
+      },
+    },
   });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(campaign);

@@ -118,6 +118,11 @@ export type KHSet = Prisma.KHSetModel
  */
 export type Result = Prisma.ResultModel
 /**
+ * Model EnrichmentRun
+ * 
+ */
+export type EnrichmentRun = Prisma.EnrichmentRunModel
+/**
  * Model Credential
  * 
  */

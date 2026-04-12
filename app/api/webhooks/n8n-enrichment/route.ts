@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
         where: { id: run.id },
         data: {
           status,
-          output: (update.output as Record<string, unknown>) ?? undefined,
+          output: update.output ? JSON.parse(JSON.stringify(update.output)) : undefined,
           error: (update.error as string) ?? undefined,
           cost: update.cost != null ? Number(update.cost) : undefined,
           executionId: (update.executionId as string) ?? undefined,

@@ -20,22 +20,60 @@ export type ResultModel = runtime.Types.Result.DefaultSelection<Prisma.$ResultPa
 
 export type AggregateResult = {
   _count: ResultCountAggregateOutputType | null
+  _avg: ResultAvgAggregateOutputType | null
+  _sum: ResultSumAggregateOutputType | null
   _min: ResultMinAggregateOutputType | null
   _max: ResultMaxAggregateOutputType | null
+}
+
+export type ResultAvgAggregateOutputType = {
+  videoCount: number | null
+  totalViews: number | null
+  avgViews: number | null
+  avgLikes: number | null
+  topVideoViews: number | null
+  scrapeHits: number | null
+  campaignFitScore: number | null
+}
+
+export type ResultSumAggregateOutputType = {
+  videoCount: number | null
+  totalViews: number | null
+  avgViews: number | null
+  avgLikes: number | null
+  topVideoViews: number | null
+  scrapeHits: number | null
+  campaignFitScore: number | null
 }
 
 export type ResultMinAggregateOutputType = {
   id: string | null
   khSetId: string | null
   platform: string | null
+  platformId: string | null
   creatorName: string | null
   creatorHandle: string | null
   profileUrl: string | null
   email: string | null
   emailSource: string | null
+  emailType: string | null
   confidence: string | null
   followers: string | null
   engagementRate: string | null
+  bio: string | null
+  rawText: string | null
+  hashtags: string | null
+  crawlTargets: string | null
+  verified: boolean | null
+  avatar: string | null
+  videoCount: number | null
+  totalViews: number | null
+  avgViews: number | null
+  avgLikes: number | null
+  topVideoViews: number | null
+  scrapeHits: number | null
+  recentActivity: string | null
+  campaignFitScore: number | null
   createdAt: Date | null
 }
 
@@ -43,14 +81,30 @@ export type ResultMaxAggregateOutputType = {
   id: string | null
   khSetId: string | null
   platform: string | null
+  platformId: string | null
   creatorName: string | null
   creatorHandle: string | null
   profileUrl: string | null
   email: string | null
   emailSource: string | null
+  emailType: string | null
   confidence: string | null
   followers: string | null
   engagementRate: string | null
+  bio: string | null
+  rawText: string | null
+  hashtags: string | null
+  crawlTargets: string | null
+  verified: boolean | null
+  avatar: string | null
+  videoCount: number | null
+  totalViews: number | null
+  avgViews: number | null
+  avgLikes: number | null
+  topVideoViews: number | null
+  scrapeHits: number | null
+  recentActivity: string | null
+  campaignFitScore: number | null
   createdAt: Date | null
 }
 
@@ -58,32 +112,85 @@ export type ResultCountAggregateOutputType = {
   id: number
   khSetId: number
   platform: number
+  platformId: number
   creatorName: number
   creatorHandle: number
   profileUrl: number
   email: number
   emailSource: number
+  emailType: number
   confidence: number
   followers: number
   engagementRate: number
+  bio: number
+  rawText: number
+  hashtags: number
+  crawlTargets: number
+  verified: number
+  avatar: number
+  videoCount: number
+  totalViews: number
+  avgViews: number
+  avgLikes: number
+  topVideoViews: number
+  scrapeHits: number
+  recentActivity: number
   rawData: number
+  affinityProfile: number
+  campaignFitScore: number
   createdAt: number
   _all: number
 }
 
 
+export type ResultAvgAggregateInputType = {
+  videoCount?: true
+  totalViews?: true
+  avgViews?: true
+  avgLikes?: true
+  topVideoViews?: true
+  scrapeHits?: true
+  campaignFitScore?: true
+}
+
+export type ResultSumAggregateInputType = {
+  videoCount?: true
+  totalViews?: true
+  avgViews?: true
+  avgLikes?: true
+  topVideoViews?: true
+  scrapeHits?: true
+  campaignFitScore?: true
+}
+
 export type ResultMinAggregateInputType = {
   id?: true
   khSetId?: true
   platform?: true
+  platformId?: true
   creatorName?: true
   creatorHandle?: true
   profileUrl?: true
   email?: true
   emailSource?: true
+  emailType?: true
   confidence?: true
   followers?: true
   engagementRate?: true
+  bio?: true
+  rawText?: true
+  hashtags?: true
+  crawlTargets?: true
+  verified?: true
+  avatar?: true
+  videoCount?: true
+  totalViews?: true
+  avgViews?: true
+  avgLikes?: true
+  topVideoViews?: true
+  scrapeHits?: true
+  recentActivity?: true
+  campaignFitScore?: true
   createdAt?: true
 }
 
@@ -91,14 +198,30 @@ export type ResultMaxAggregateInputType = {
   id?: true
   khSetId?: true
   platform?: true
+  platformId?: true
   creatorName?: true
   creatorHandle?: true
   profileUrl?: true
   email?: true
   emailSource?: true
+  emailType?: true
   confidence?: true
   followers?: true
   engagementRate?: true
+  bio?: true
+  rawText?: true
+  hashtags?: true
+  crawlTargets?: true
+  verified?: true
+  avatar?: true
+  videoCount?: true
+  totalViews?: true
+  avgViews?: true
+  avgLikes?: true
+  topVideoViews?: true
+  scrapeHits?: true
+  recentActivity?: true
+  campaignFitScore?: true
   createdAt?: true
 }
 
@@ -106,15 +229,32 @@ export type ResultCountAggregateInputType = {
   id?: true
   khSetId?: true
   platform?: true
+  platformId?: true
   creatorName?: true
   creatorHandle?: true
   profileUrl?: true
   email?: true
   emailSource?: true
+  emailType?: true
   confidence?: true
   followers?: true
   engagementRate?: true
+  bio?: true
+  rawText?: true
+  hashtags?: true
+  crawlTargets?: true
+  verified?: true
+  avatar?: true
+  videoCount?: true
+  totalViews?: true
+  avgViews?: true
+  avgLikes?: true
+  topVideoViews?: true
+  scrapeHits?: true
+  recentActivity?: true
   rawData?: true
+  affinityProfile?: true
+  campaignFitScore?: true
   createdAt?: true
   _all?: true
 }
@@ -157,6 +297,18 @@ export type ResultAggregateArgs<ExtArgs extends runtime.Types.Extensions.Interna
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: ResultAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: ResultSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: ResultMinAggregateInputType
@@ -187,6 +339,8 @@ export type ResultGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   take?: number
   skip?: number
   _count?: ResultCountAggregateInputType | true
+  _avg?: ResultAvgAggregateInputType
+  _sum?: ResultSumAggregateInputType
   _min?: ResultMinAggregateInputType
   _max?: ResultMaxAggregateInputType
 }
@@ -195,17 +349,36 @@ export type ResultGroupByOutputType = {
   id: string
   khSetId: string
   platform: string
+  platformId: string | null
   creatorName: string | null
   creatorHandle: string | null
   profileUrl: string | null
   email: string | null
   emailSource: string | null
+  emailType: string | null
   confidence: string | null
   followers: string | null
   engagementRate: string | null
+  bio: string | null
+  rawText: string | null
+  hashtags: string | null
+  crawlTargets: string | null
+  verified: boolean | null
+  avatar: string | null
+  videoCount: number | null
+  totalViews: number | null
+  avgViews: number | null
+  avgLikes: number | null
+  topVideoViews: number | null
+  scrapeHits: number | null
+  recentActivity: string | null
   rawData: runtime.JsonValue | null
+  affinityProfile: runtime.JsonValue | null
+  campaignFitScore: number | null
   createdAt: Date
   _count: ResultCountAggregateOutputType | null
+  _avg: ResultAvgAggregateOutputType | null
+  _sum: ResultSumAggregateOutputType | null
   _min: ResultMinAggregateOutputType | null
   _max: ResultMaxAggregateOutputType | null
 }
@@ -232,34 +405,70 @@ export type ResultWhereInput = {
   id?: Prisma.StringFilter<"Result"> | string
   khSetId?: Prisma.StringFilter<"Result"> | string
   platform?: Prisma.StringFilter<"Result"> | string
+  platformId?: Prisma.StringNullableFilter<"Result"> | string | null
   creatorName?: Prisma.StringNullableFilter<"Result"> | string | null
   creatorHandle?: Prisma.StringNullableFilter<"Result"> | string | null
   profileUrl?: Prisma.StringNullableFilter<"Result"> | string | null
   email?: Prisma.StringNullableFilter<"Result"> | string | null
   emailSource?: Prisma.StringNullableFilter<"Result"> | string | null
+  emailType?: Prisma.StringNullableFilter<"Result"> | string | null
   confidence?: Prisma.StringNullableFilter<"Result"> | string | null
   followers?: Prisma.StringNullableFilter<"Result"> | string | null
   engagementRate?: Prisma.StringNullableFilter<"Result"> | string | null
+  bio?: Prisma.StringNullableFilter<"Result"> | string | null
+  rawText?: Prisma.StringNullableFilter<"Result"> | string | null
+  hashtags?: Prisma.StringNullableFilter<"Result"> | string | null
+  crawlTargets?: Prisma.StringNullableFilter<"Result"> | string | null
+  verified?: Prisma.BoolNullableFilter<"Result"> | boolean | null
+  avatar?: Prisma.StringNullableFilter<"Result"> | string | null
+  videoCount?: Prisma.IntNullableFilter<"Result"> | number | null
+  totalViews?: Prisma.IntNullableFilter<"Result"> | number | null
+  avgViews?: Prisma.IntNullableFilter<"Result"> | number | null
+  avgLikes?: Prisma.IntNullableFilter<"Result"> | number | null
+  topVideoViews?: Prisma.IntNullableFilter<"Result"> | number | null
+  scrapeHits?: Prisma.IntNullableFilter<"Result"> | number | null
+  recentActivity?: Prisma.StringNullableFilter<"Result"> | string | null
   rawData?: Prisma.JsonNullableFilter<"Result">
+  affinityProfile?: Prisma.JsonNullableFilter<"Result">
+  campaignFitScore?: Prisma.FloatNullableFilter<"Result"> | number | null
   createdAt?: Prisma.DateTimeFilter<"Result"> | Date | string
   khSet?: Prisma.XOR<Prisma.KHSetScalarRelationFilter, Prisma.KHSetWhereInput>
+  enrichmentRuns?: Prisma.EnrichmentRunListRelationFilter
 }
 
 export type ResultOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   khSetId?: Prisma.SortOrder
   platform?: Prisma.SortOrder
+  platformId?: Prisma.SortOrderInput | Prisma.SortOrder
   creatorName?: Prisma.SortOrderInput | Prisma.SortOrder
   creatorHandle?: Prisma.SortOrderInput | Prisma.SortOrder
   profileUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   email?: Prisma.SortOrderInput | Prisma.SortOrder
   emailSource?: Prisma.SortOrderInput | Prisma.SortOrder
+  emailType?: Prisma.SortOrderInput | Prisma.SortOrder
   confidence?: Prisma.SortOrderInput | Prisma.SortOrder
   followers?: Prisma.SortOrderInput | Prisma.SortOrder
   engagementRate?: Prisma.SortOrderInput | Prisma.SortOrder
+  bio?: Prisma.SortOrderInput | Prisma.SortOrder
+  rawText?: Prisma.SortOrderInput | Prisma.SortOrder
+  hashtags?: Prisma.SortOrderInput | Prisma.SortOrder
+  crawlTargets?: Prisma.SortOrderInput | Prisma.SortOrder
+  verified?: Prisma.SortOrderInput | Prisma.SortOrder
+  avatar?: Prisma.SortOrderInput | Prisma.SortOrder
+  videoCount?: Prisma.SortOrderInput | Prisma.SortOrder
+  totalViews?: Prisma.SortOrderInput | Prisma.SortOrder
+  avgViews?: Prisma.SortOrderInput | Prisma.SortOrder
+  avgLikes?: Prisma.SortOrderInput | Prisma.SortOrder
+  topVideoViews?: Prisma.SortOrderInput | Prisma.SortOrder
+  scrapeHits?: Prisma.SortOrderInput | Prisma.SortOrder
+  recentActivity?: Prisma.SortOrderInput | Prisma.SortOrder
   rawData?: Prisma.SortOrderInput | Prisma.SortOrder
+  affinityProfile?: Prisma.SortOrderInput | Prisma.SortOrder
+  campaignFitScore?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   khSet?: Prisma.KHSetOrderByWithRelationInput
+  enrichmentRuns?: Prisma.EnrichmentRunOrderByRelationAggregateInput
 }
 
 export type ResultWhereUniqueInput = Prisma.AtLeast<{
@@ -269,36 +478,73 @@ export type ResultWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.ResultWhereInput | Prisma.ResultWhereInput[]
   khSetId?: Prisma.StringFilter<"Result"> | string
   platform?: Prisma.StringFilter<"Result"> | string
+  platformId?: Prisma.StringNullableFilter<"Result"> | string | null
   creatorName?: Prisma.StringNullableFilter<"Result"> | string | null
   creatorHandle?: Prisma.StringNullableFilter<"Result"> | string | null
   profileUrl?: Prisma.StringNullableFilter<"Result"> | string | null
   email?: Prisma.StringNullableFilter<"Result"> | string | null
   emailSource?: Prisma.StringNullableFilter<"Result"> | string | null
+  emailType?: Prisma.StringNullableFilter<"Result"> | string | null
   confidence?: Prisma.StringNullableFilter<"Result"> | string | null
   followers?: Prisma.StringNullableFilter<"Result"> | string | null
   engagementRate?: Prisma.StringNullableFilter<"Result"> | string | null
+  bio?: Prisma.StringNullableFilter<"Result"> | string | null
+  rawText?: Prisma.StringNullableFilter<"Result"> | string | null
+  hashtags?: Prisma.StringNullableFilter<"Result"> | string | null
+  crawlTargets?: Prisma.StringNullableFilter<"Result"> | string | null
+  verified?: Prisma.BoolNullableFilter<"Result"> | boolean | null
+  avatar?: Prisma.StringNullableFilter<"Result"> | string | null
+  videoCount?: Prisma.IntNullableFilter<"Result"> | number | null
+  totalViews?: Prisma.IntNullableFilter<"Result"> | number | null
+  avgViews?: Prisma.IntNullableFilter<"Result"> | number | null
+  avgLikes?: Prisma.IntNullableFilter<"Result"> | number | null
+  topVideoViews?: Prisma.IntNullableFilter<"Result"> | number | null
+  scrapeHits?: Prisma.IntNullableFilter<"Result"> | number | null
+  recentActivity?: Prisma.StringNullableFilter<"Result"> | string | null
   rawData?: Prisma.JsonNullableFilter<"Result">
+  affinityProfile?: Prisma.JsonNullableFilter<"Result">
+  campaignFitScore?: Prisma.FloatNullableFilter<"Result"> | number | null
   createdAt?: Prisma.DateTimeFilter<"Result"> | Date | string
   khSet?: Prisma.XOR<Prisma.KHSetScalarRelationFilter, Prisma.KHSetWhereInput>
+  enrichmentRuns?: Prisma.EnrichmentRunListRelationFilter
 }, "id">
 
 export type ResultOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   khSetId?: Prisma.SortOrder
   platform?: Prisma.SortOrder
+  platformId?: Prisma.SortOrderInput | Prisma.SortOrder
   creatorName?: Prisma.SortOrderInput | Prisma.SortOrder
   creatorHandle?: Prisma.SortOrderInput | Prisma.SortOrder
   profileUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   email?: Prisma.SortOrderInput | Prisma.SortOrder
   emailSource?: Prisma.SortOrderInput | Prisma.SortOrder
+  emailType?: Prisma.SortOrderInput | Prisma.SortOrder
   confidence?: Prisma.SortOrderInput | Prisma.SortOrder
   followers?: Prisma.SortOrderInput | Prisma.SortOrder
   engagementRate?: Prisma.SortOrderInput | Prisma.SortOrder
+  bio?: Prisma.SortOrderInput | Prisma.SortOrder
+  rawText?: Prisma.SortOrderInput | Prisma.SortOrder
+  hashtags?: Prisma.SortOrderInput | Prisma.SortOrder
+  crawlTargets?: Prisma.SortOrderInput | Prisma.SortOrder
+  verified?: Prisma.SortOrderInput | Prisma.SortOrder
+  avatar?: Prisma.SortOrderInput | Prisma.SortOrder
+  videoCount?: Prisma.SortOrderInput | Prisma.SortOrder
+  totalViews?: Prisma.SortOrderInput | Prisma.SortOrder
+  avgViews?: Prisma.SortOrderInput | Prisma.SortOrder
+  avgLikes?: Prisma.SortOrderInput | Prisma.SortOrder
+  topVideoViews?: Prisma.SortOrderInput | Prisma.SortOrder
+  scrapeHits?: Prisma.SortOrderInput | Prisma.SortOrder
+  recentActivity?: Prisma.SortOrderInput | Prisma.SortOrder
   rawData?: Prisma.SortOrderInput | Prisma.SortOrder
+  affinityProfile?: Prisma.SortOrderInput | Prisma.SortOrder
+  campaignFitScore?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.ResultCountOrderByAggregateInput
+  _avg?: Prisma.ResultAvgOrderByAggregateInput
   _max?: Prisma.ResultMaxOrderByAggregateInput
   _min?: Prisma.ResultMinOrderByAggregateInput
+  _sum?: Prisma.ResultSumOrderByAggregateInput
 }
 
 export type ResultScalarWhereWithAggregatesInput = {
@@ -308,110 +554,233 @@ export type ResultScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"Result"> | string
   khSetId?: Prisma.StringWithAggregatesFilter<"Result"> | string
   platform?: Prisma.StringWithAggregatesFilter<"Result"> | string
+  platformId?: Prisma.StringNullableWithAggregatesFilter<"Result"> | string | null
   creatorName?: Prisma.StringNullableWithAggregatesFilter<"Result"> | string | null
   creatorHandle?: Prisma.StringNullableWithAggregatesFilter<"Result"> | string | null
   profileUrl?: Prisma.StringNullableWithAggregatesFilter<"Result"> | string | null
   email?: Prisma.StringNullableWithAggregatesFilter<"Result"> | string | null
   emailSource?: Prisma.StringNullableWithAggregatesFilter<"Result"> | string | null
+  emailType?: Prisma.StringNullableWithAggregatesFilter<"Result"> | string | null
   confidence?: Prisma.StringNullableWithAggregatesFilter<"Result"> | string | null
   followers?: Prisma.StringNullableWithAggregatesFilter<"Result"> | string | null
   engagementRate?: Prisma.StringNullableWithAggregatesFilter<"Result"> | string | null
+  bio?: Prisma.StringNullableWithAggregatesFilter<"Result"> | string | null
+  rawText?: Prisma.StringNullableWithAggregatesFilter<"Result"> | string | null
+  hashtags?: Prisma.StringNullableWithAggregatesFilter<"Result"> | string | null
+  crawlTargets?: Prisma.StringNullableWithAggregatesFilter<"Result"> | string | null
+  verified?: Prisma.BoolNullableWithAggregatesFilter<"Result"> | boolean | null
+  avatar?: Prisma.StringNullableWithAggregatesFilter<"Result"> | string | null
+  videoCount?: Prisma.IntNullableWithAggregatesFilter<"Result"> | number | null
+  totalViews?: Prisma.IntNullableWithAggregatesFilter<"Result"> | number | null
+  avgViews?: Prisma.IntNullableWithAggregatesFilter<"Result"> | number | null
+  avgLikes?: Prisma.IntNullableWithAggregatesFilter<"Result"> | number | null
+  topVideoViews?: Prisma.IntNullableWithAggregatesFilter<"Result"> | number | null
+  scrapeHits?: Prisma.IntNullableWithAggregatesFilter<"Result"> | number | null
+  recentActivity?: Prisma.StringNullableWithAggregatesFilter<"Result"> | string | null
   rawData?: Prisma.JsonNullableWithAggregatesFilter<"Result">
+  affinityProfile?: Prisma.JsonNullableWithAggregatesFilter<"Result">
+  campaignFitScore?: Prisma.FloatNullableWithAggregatesFilter<"Result"> | number | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Result"> | Date | string
 }
 
 export type ResultCreateInput = {
   id?: string
   platform: string
+  platformId?: string | null
   creatorName?: string | null
   creatorHandle?: string | null
   profileUrl?: string | null
   email?: string | null
   emailSource?: string | null
+  emailType?: string | null
   confidence?: string | null
   followers?: string | null
   engagementRate?: string | null
+  bio?: string | null
+  rawText?: string | null
+  hashtags?: string | null
+  crawlTargets?: string | null
+  verified?: boolean | null
+  avatar?: string | null
+  videoCount?: number | null
+  totalViews?: number | null
+  avgViews?: number | null
+  avgLikes?: number | null
+  topVideoViews?: number | null
+  scrapeHits?: number | null
+  recentActivity?: string | null
   rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: number | null
   createdAt?: Date | string
   khSet: Prisma.KHSetCreateNestedOneWithoutResultsInput
+  enrichmentRuns?: Prisma.EnrichmentRunCreateNestedManyWithoutResultInput
 }
 
 export type ResultUncheckedCreateInput = {
   id?: string
   khSetId: string
   platform: string
+  platformId?: string | null
   creatorName?: string | null
   creatorHandle?: string | null
   profileUrl?: string | null
   email?: string | null
   emailSource?: string | null
+  emailType?: string | null
   confidence?: string | null
   followers?: string | null
   engagementRate?: string | null
+  bio?: string | null
+  rawText?: string | null
+  hashtags?: string | null
+  crawlTargets?: string | null
+  verified?: boolean | null
+  avatar?: string | null
+  videoCount?: number | null
+  totalViews?: number | null
+  avgViews?: number | null
+  avgLikes?: number | null
+  topVideoViews?: number | null
+  scrapeHits?: number | null
+  recentActivity?: string | null
   rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: number | null
   createdAt?: Date | string
+  enrichmentRuns?: Prisma.EnrichmentRunUncheckedCreateNestedManyWithoutResultInput
 }
 
 export type ResultUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   platform?: Prisma.StringFieldUpdateOperationsInput | string
+  platformId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   creatorName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   creatorHandle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   profileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   followers?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   engagementRate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  hashtags?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  crawlTargets?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  verified?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  videoCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgLikes?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  topVideoViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  scrapeHits?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  recentActivity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   khSet?: Prisma.KHSetUpdateOneRequiredWithoutResultsNestedInput
+  enrichmentRuns?: Prisma.EnrichmentRunUpdateManyWithoutResultNestedInput
 }
 
 export type ResultUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   khSetId?: Prisma.StringFieldUpdateOperationsInput | string
   platform?: Prisma.StringFieldUpdateOperationsInput | string
+  platformId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   creatorName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   creatorHandle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   profileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   followers?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   engagementRate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  hashtags?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  crawlTargets?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  verified?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  videoCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgLikes?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  topVideoViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  scrapeHits?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  recentActivity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  enrichmentRuns?: Prisma.EnrichmentRunUncheckedUpdateManyWithoutResultNestedInput
 }
 
 export type ResultCreateManyInput = {
   id?: string
   khSetId: string
   platform: string
+  platformId?: string | null
   creatorName?: string | null
   creatorHandle?: string | null
   profileUrl?: string | null
   email?: string | null
   emailSource?: string | null
+  emailType?: string | null
   confidence?: string | null
   followers?: string | null
   engagementRate?: string | null
+  bio?: string | null
+  rawText?: string | null
+  hashtags?: string | null
+  crawlTargets?: string | null
+  verified?: boolean | null
+  avatar?: string | null
+  videoCount?: number | null
+  totalViews?: number | null
+  avgViews?: number | null
+  avgLikes?: number | null
+  topVideoViews?: number | null
+  scrapeHits?: number | null
+  recentActivity?: string | null
   rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: number | null
   createdAt?: Date | string
 }
 
 export type ResultUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   platform?: Prisma.StringFieldUpdateOperationsInput | string
+  platformId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   creatorName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   creatorHandle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   profileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   followers?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   engagementRate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  hashtags?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  crawlTargets?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  verified?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  videoCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgLikes?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  topVideoViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  scrapeHits?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  recentActivity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -419,15 +788,32 @@ export type ResultUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   khSetId?: Prisma.StringFieldUpdateOperationsInput | string
   platform?: Prisma.StringFieldUpdateOperationsInput | string
+  platformId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   creatorName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   creatorHandle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   profileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   followers?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   engagementRate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  hashtags?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  crawlTargets?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  verified?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  videoCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgLikes?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  topVideoViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  scrapeHits?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  recentActivity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -445,30 +831,73 @@ export type ResultCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   khSetId?: Prisma.SortOrder
   platform?: Prisma.SortOrder
+  platformId?: Prisma.SortOrder
   creatorName?: Prisma.SortOrder
   creatorHandle?: Prisma.SortOrder
   profileUrl?: Prisma.SortOrder
   email?: Prisma.SortOrder
   emailSource?: Prisma.SortOrder
+  emailType?: Prisma.SortOrder
   confidence?: Prisma.SortOrder
   followers?: Prisma.SortOrder
   engagementRate?: Prisma.SortOrder
+  bio?: Prisma.SortOrder
+  rawText?: Prisma.SortOrder
+  hashtags?: Prisma.SortOrder
+  crawlTargets?: Prisma.SortOrder
+  verified?: Prisma.SortOrder
+  avatar?: Prisma.SortOrder
+  videoCount?: Prisma.SortOrder
+  totalViews?: Prisma.SortOrder
+  avgViews?: Prisma.SortOrder
+  avgLikes?: Prisma.SortOrder
+  topVideoViews?: Prisma.SortOrder
+  scrapeHits?: Prisma.SortOrder
+  recentActivity?: Prisma.SortOrder
   rawData?: Prisma.SortOrder
+  affinityProfile?: Prisma.SortOrder
+  campaignFitScore?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+}
+
+export type ResultAvgOrderByAggregateInput = {
+  videoCount?: Prisma.SortOrder
+  totalViews?: Prisma.SortOrder
+  avgViews?: Prisma.SortOrder
+  avgLikes?: Prisma.SortOrder
+  topVideoViews?: Prisma.SortOrder
+  scrapeHits?: Prisma.SortOrder
+  campaignFitScore?: Prisma.SortOrder
 }
 
 export type ResultMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   khSetId?: Prisma.SortOrder
   platform?: Prisma.SortOrder
+  platformId?: Prisma.SortOrder
   creatorName?: Prisma.SortOrder
   creatorHandle?: Prisma.SortOrder
   profileUrl?: Prisma.SortOrder
   email?: Prisma.SortOrder
   emailSource?: Prisma.SortOrder
+  emailType?: Prisma.SortOrder
   confidence?: Prisma.SortOrder
   followers?: Prisma.SortOrder
   engagementRate?: Prisma.SortOrder
+  bio?: Prisma.SortOrder
+  rawText?: Prisma.SortOrder
+  hashtags?: Prisma.SortOrder
+  crawlTargets?: Prisma.SortOrder
+  verified?: Prisma.SortOrder
+  avatar?: Prisma.SortOrder
+  videoCount?: Prisma.SortOrder
+  totalViews?: Prisma.SortOrder
+  avgViews?: Prisma.SortOrder
+  avgLikes?: Prisma.SortOrder
+  topVideoViews?: Prisma.SortOrder
+  scrapeHits?: Prisma.SortOrder
+  recentActivity?: Prisma.SortOrder
+  campaignFitScore?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -476,15 +905,46 @@ export type ResultMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   khSetId?: Prisma.SortOrder
   platform?: Prisma.SortOrder
+  platformId?: Prisma.SortOrder
   creatorName?: Prisma.SortOrder
   creatorHandle?: Prisma.SortOrder
   profileUrl?: Prisma.SortOrder
   email?: Prisma.SortOrder
   emailSource?: Prisma.SortOrder
+  emailType?: Prisma.SortOrder
   confidence?: Prisma.SortOrder
   followers?: Prisma.SortOrder
   engagementRate?: Prisma.SortOrder
+  bio?: Prisma.SortOrder
+  rawText?: Prisma.SortOrder
+  hashtags?: Prisma.SortOrder
+  crawlTargets?: Prisma.SortOrder
+  verified?: Prisma.SortOrder
+  avatar?: Prisma.SortOrder
+  videoCount?: Prisma.SortOrder
+  totalViews?: Prisma.SortOrder
+  avgViews?: Prisma.SortOrder
+  avgLikes?: Prisma.SortOrder
+  topVideoViews?: Prisma.SortOrder
+  scrapeHits?: Prisma.SortOrder
+  recentActivity?: Prisma.SortOrder
+  campaignFitScore?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+}
+
+export type ResultSumOrderByAggregateInput = {
+  videoCount?: Prisma.SortOrder
+  totalViews?: Prisma.SortOrder
+  avgViews?: Prisma.SortOrder
+  avgLikes?: Prisma.SortOrder
+  topVideoViews?: Prisma.SortOrder
+  scrapeHits?: Prisma.SortOrder
+  campaignFitScore?: Prisma.SortOrder
+}
+
+export type ResultScalarRelationFilter = {
+  is?: Prisma.ResultWhereInput
+  isNot?: Prisma.ResultWhereInput
 }
 
 export type ResultCreateNestedManyWithoutKhSetInput = {
@@ -529,34 +989,92 @@ export type ResultUncheckedUpdateManyWithoutKhSetNestedInput = {
   deleteMany?: Prisma.ResultScalarWhereInput | Prisma.ResultScalarWhereInput[]
 }
 
+export type NullableFloatFieldUpdateOperationsInput = {
+  set?: number | null
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
+}
+
+export type ResultCreateNestedOneWithoutEnrichmentRunsInput = {
+  create?: Prisma.XOR<Prisma.ResultCreateWithoutEnrichmentRunsInput, Prisma.ResultUncheckedCreateWithoutEnrichmentRunsInput>
+  connectOrCreate?: Prisma.ResultCreateOrConnectWithoutEnrichmentRunsInput
+  connect?: Prisma.ResultWhereUniqueInput
+}
+
+export type ResultUpdateOneRequiredWithoutEnrichmentRunsNestedInput = {
+  create?: Prisma.XOR<Prisma.ResultCreateWithoutEnrichmentRunsInput, Prisma.ResultUncheckedCreateWithoutEnrichmentRunsInput>
+  connectOrCreate?: Prisma.ResultCreateOrConnectWithoutEnrichmentRunsInput
+  upsert?: Prisma.ResultUpsertWithoutEnrichmentRunsInput
+  connect?: Prisma.ResultWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ResultUpdateToOneWithWhereWithoutEnrichmentRunsInput, Prisma.ResultUpdateWithoutEnrichmentRunsInput>, Prisma.ResultUncheckedUpdateWithoutEnrichmentRunsInput>
+}
+
 export type ResultCreateWithoutKhSetInput = {
   id?: string
   platform: string
+  platformId?: string | null
   creatorName?: string | null
   creatorHandle?: string | null
   profileUrl?: string | null
   email?: string | null
   emailSource?: string | null
+  emailType?: string | null
   confidence?: string | null
   followers?: string | null
   engagementRate?: string | null
+  bio?: string | null
+  rawText?: string | null
+  hashtags?: string | null
+  crawlTargets?: string | null
+  verified?: boolean | null
+  avatar?: string | null
+  videoCount?: number | null
+  totalViews?: number | null
+  avgViews?: number | null
+  avgLikes?: number | null
+  topVideoViews?: number | null
+  scrapeHits?: number | null
+  recentActivity?: string | null
   rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: number | null
   createdAt?: Date | string
+  enrichmentRuns?: Prisma.EnrichmentRunCreateNestedManyWithoutResultInput
 }
 
 export type ResultUncheckedCreateWithoutKhSetInput = {
   id?: string
   platform: string
+  platformId?: string | null
   creatorName?: string | null
   creatorHandle?: string | null
   profileUrl?: string | null
   email?: string | null
   emailSource?: string | null
+  emailType?: string | null
   confidence?: string | null
   followers?: string | null
   engagementRate?: string | null
+  bio?: string | null
+  rawText?: string | null
+  hashtags?: string | null
+  crawlTargets?: string | null
+  verified?: boolean | null
+  avatar?: string | null
+  videoCount?: number | null
+  totalViews?: number | null
+  avgViews?: number | null
+  avgLikes?: number | null
+  topVideoViews?: number | null
+  scrapeHits?: number | null
+  recentActivity?: string | null
   rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: number | null
   createdAt?: Date | string
+  enrichmentRuns?: Prisma.EnrichmentRunUncheckedCreateNestedManyWithoutResultInput
 }
 
 export type ResultCreateOrConnectWithoutKhSetInput = {
@@ -592,110 +1110,410 @@ export type ResultScalarWhereInput = {
   id?: Prisma.StringFilter<"Result"> | string
   khSetId?: Prisma.StringFilter<"Result"> | string
   platform?: Prisma.StringFilter<"Result"> | string
+  platformId?: Prisma.StringNullableFilter<"Result"> | string | null
   creatorName?: Prisma.StringNullableFilter<"Result"> | string | null
   creatorHandle?: Prisma.StringNullableFilter<"Result"> | string | null
   profileUrl?: Prisma.StringNullableFilter<"Result"> | string | null
   email?: Prisma.StringNullableFilter<"Result"> | string | null
   emailSource?: Prisma.StringNullableFilter<"Result"> | string | null
+  emailType?: Prisma.StringNullableFilter<"Result"> | string | null
   confidence?: Prisma.StringNullableFilter<"Result"> | string | null
   followers?: Prisma.StringNullableFilter<"Result"> | string | null
   engagementRate?: Prisma.StringNullableFilter<"Result"> | string | null
+  bio?: Prisma.StringNullableFilter<"Result"> | string | null
+  rawText?: Prisma.StringNullableFilter<"Result"> | string | null
+  hashtags?: Prisma.StringNullableFilter<"Result"> | string | null
+  crawlTargets?: Prisma.StringNullableFilter<"Result"> | string | null
+  verified?: Prisma.BoolNullableFilter<"Result"> | boolean | null
+  avatar?: Prisma.StringNullableFilter<"Result"> | string | null
+  videoCount?: Prisma.IntNullableFilter<"Result"> | number | null
+  totalViews?: Prisma.IntNullableFilter<"Result"> | number | null
+  avgViews?: Prisma.IntNullableFilter<"Result"> | number | null
+  avgLikes?: Prisma.IntNullableFilter<"Result"> | number | null
+  topVideoViews?: Prisma.IntNullableFilter<"Result"> | number | null
+  scrapeHits?: Prisma.IntNullableFilter<"Result"> | number | null
+  recentActivity?: Prisma.StringNullableFilter<"Result"> | string | null
   rawData?: Prisma.JsonNullableFilter<"Result">
+  affinityProfile?: Prisma.JsonNullableFilter<"Result">
+  campaignFitScore?: Prisma.FloatNullableFilter<"Result"> | number | null
   createdAt?: Prisma.DateTimeFilter<"Result"> | Date | string
 }
 
-export type ResultCreateManyKhSetInput = {
+export type ResultCreateWithoutEnrichmentRunsInput = {
   id?: string
   platform: string
+  platformId?: string | null
   creatorName?: string | null
   creatorHandle?: string | null
   profileUrl?: string | null
   email?: string | null
   emailSource?: string | null
+  emailType?: string | null
   confidence?: string | null
   followers?: string | null
   engagementRate?: string | null
+  bio?: string | null
+  rawText?: string | null
+  hashtags?: string | null
+  crawlTargets?: string | null
+  verified?: boolean | null
+  avatar?: string | null
+  videoCount?: number | null
+  totalViews?: number | null
+  avgViews?: number | null
+  avgLikes?: number | null
+  topVideoViews?: number | null
+  scrapeHits?: number | null
+  recentActivity?: string | null
   rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: number | null
+  createdAt?: Date | string
+  khSet: Prisma.KHSetCreateNestedOneWithoutResultsInput
+}
+
+export type ResultUncheckedCreateWithoutEnrichmentRunsInput = {
+  id?: string
+  khSetId: string
+  platform: string
+  platformId?: string | null
+  creatorName?: string | null
+  creatorHandle?: string | null
+  profileUrl?: string | null
+  email?: string | null
+  emailSource?: string | null
+  emailType?: string | null
+  confidence?: string | null
+  followers?: string | null
+  engagementRate?: string | null
+  bio?: string | null
+  rawText?: string | null
+  hashtags?: string | null
+  crawlTargets?: string | null
+  verified?: boolean | null
+  avatar?: string | null
+  videoCount?: number | null
+  totalViews?: number | null
+  avgViews?: number | null
+  avgLikes?: number | null
+  topVideoViews?: number | null
+  scrapeHits?: number | null
+  recentActivity?: string | null
+  rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: number | null
+  createdAt?: Date | string
+}
+
+export type ResultCreateOrConnectWithoutEnrichmentRunsInput = {
+  where: Prisma.ResultWhereUniqueInput
+  create: Prisma.XOR<Prisma.ResultCreateWithoutEnrichmentRunsInput, Prisma.ResultUncheckedCreateWithoutEnrichmentRunsInput>
+}
+
+export type ResultUpsertWithoutEnrichmentRunsInput = {
+  update: Prisma.XOR<Prisma.ResultUpdateWithoutEnrichmentRunsInput, Prisma.ResultUncheckedUpdateWithoutEnrichmentRunsInput>
+  create: Prisma.XOR<Prisma.ResultCreateWithoutEnrichmentRunsInput, Prisma.ResultUncheckedCreateWithoutEnrichmentRunsInput>
+  where?: Prisma.ResultWhereInput
+}
+
+export type ResultUpdateToOneWithWhereWithoutEnrichmentRunsInput = {
+  where?: Prisma.ResultWhereInput
+  data: Prisma.XOR<Prisma.ResultUpdateWithoutEnrichmentRunsInput, Prisma.ResultUncheckedUpdateWithoutEnrichmentRunsInput>
+}
+
+export type ResultUpdateWithoutEnrichmentRunsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  platform?: Prisma.StringFieldUpdateOperationsInput | string
+  platformId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  creatorName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  creatorHandle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  profileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  confidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followers?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  engagementRate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  hashtags?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  crawlTargets?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  verified?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  videoCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgLikes?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  topVideoViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  scrapeHits?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  recentActivity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  khSet?: Prisma.KHSetUpdateOneRequiredWithoutResultsNestedInput
+}
+
+export type ResultUncheckedUpdateWithoutEnrichmentRunsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  khSetId?: Prisma.StringFieldUpdateOperationsInput | string
+  platform?: Prisma.StringFieldUpdateOperationsInput | string
+  platformId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  creatorName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  creatorHandle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  profileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  confidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followers?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  engagementRate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  hashtags?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  crawlTargets?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  verified?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  videoCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgLikes?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  topVideoViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  scrapeHits?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  recentActivity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type ResultCreateManyKhSetInput = {
+  id?: string
+  platform: string
+  platformId?: string | null
+  creatorName?: string | null
+  creatorHandle?: string | null
+  profileUrl?: string | null
+  email?: string | null
+  emailSource?: string | null
+  emailType?: string | null
+  confidence?: string | null
+  followers?: string | null
+  engagementRate?: string | null
+  bio?: string | null
+  rawText?: string | null
+  hashtags?: string | null
+  crawlTargets?: string | null
+  verified?: boolean | null
+  avatar?: string | null
+  videoCount?: number | null
+  totalViews?: number | null
+  avgViews?: number | null
+  avgLikes?: number | null
+  topVideoViews?: number | null
+  scrapeHits?: number | null
+  recentActivity?: string | null
+  rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: number | null
   createdAt?: Date | string
 }
 
 export type ResultUpdateWithoutKhSetInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   platform?: Prisma.StringFieldUpdateOperationsInput | string
+  platformId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   creatorName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   creatorHandle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   profileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   followers?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   engagementRate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  hashtags?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  crawlTargets?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  verified?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  videoCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgLikes?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  topVideoViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  scrapeHits?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  recentActivity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  enrichmentRuns?: Prisma.EnrichmentRunUpdateManyWithoutResultNestedInput
 }
 
 export type ResultUncheckedUpdateWithoutKhSetInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   platform?: Prisma.StringFieldUpdateOperationsInput | string
+  platformId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   creatorName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   creatorHandle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   profileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   followers?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   engagementRate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  hashtags?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  crawlTargets?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  verified?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  videoCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgLikes?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  topVideoViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  scrapeHits?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  recentActivity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  enrichmentRuns?: Prisma.EnrichmentRunUncheckedUpdateManyWithoutResultNestedInput
 }
 
 export type ResultUncheckedUpdateManyWithoutKhSetInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   platform?: Prisma.StringFieldUpdateOperationsInput | string
+  platformId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   creatorName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   creatorHandle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   profileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   followers?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   engagementRate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  hashtags?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  crawlTargets?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  verified?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  videoCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgLikes?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  topVideoViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  scrapeHits?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  recentActivity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+
+/**
+ * Count Type ResultCountOutputType
+ */
+
+export type ResultCountOutputType = {
+  enrichmentRuns: number
+}
+
+export type ResultCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  enrichmentRuns?: boolean | ResultCountOutputTypeCountEnrichmentRunsArgs
+}
+
+/**
+ * ResultCountOutputType without action
+ */
+export type ResultCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ResultCountOutputType
+   */
+  select?: Prisma.ResultCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * ResultCountOutputType without action
+ */
+export type ResultCountOutputTypeCountEnrichmentRunsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.EnrichmentRunWhereInput
+}
 
 
 export type ResultSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   khSetId?: boolean
   platform?: boolean
+  platformId?: boolean
   creatorName?: boolean
   creatorHandle?: boolean
   profileUrl?: boolean
   email?: boolean
   emailSource?: boolean
+  emailType?: boolean
   confidence?: boolean
   followers?: boolean
   engagementRate?: boolean
+  bio?: boolean
+  rawText?: boolean
+  hashtags?: boolean
+  crawlTargets?: boolean
+  verified?: boolean
+  avatar?: boolean
+  videoCount?: boolean
+  totalViews?: boolean
+  avgViews?: boolean
+  avgLikes?: boolean
+  topVideoViews?: boolean
+  scrapeHits?: boolean
+  recentActivity?: boolean
   rawData?: boolean
+  affinityProfile?: boolean
+  campaignFitScore?: boolean
   createdAt?: boolean
   khSet?: boolean | Prisma.KHSetDefaultArgs<ExtArgs>
+  enrichmentRuns?: boolean | Prisma.Result$enrichmentRunsArgs<ExtArgs>
+  _count?: boolean | Prisma.ResultCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["result"]>
 
 export type ResultSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   khSetId?: boolean
   platform?: boolean
+  platformId?: boolean
   creatorName?: boolean
   creatorHandle?: boolean
   profileUrl?: boolean
   email?: boolean
   emailSource?: boolean
+  emailType?: boolean
   confidence?: boolean
   followers?: boolean
   engagementRate?: boolean
+  bio?: boolean
+  rawText?: boolean
+  hashtags?: boolean
+  crawlTargets?: boolean
+  verified?: boolean
+  avatar?: boolean
+  videoCount?: boolean
+  totalViews?: boolean
+  avgViews?: boolean
+  avgLikes?: boolean
+  topVideoViews?: boolean
+  scrapeHits?: boolean
+  recentActivity?: boolean
   rawData?: boolean
+  affinityProfile?: boolean
+  campaignFitScore?: boolean
   createdAt?: boolean
   khSet?: boolean | Prisma.KHSetDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["result"]>
@@ -704,15 +1522,32 @@ export type ResultSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   id?: boolean
   khSetId?: boolean
   platform?: boolean
+  platformId?: boolean
   creatorName?: boolean
   creatorHandle?: boolean
   profileUrl?: boolean
   email?: boolean
   emailSource?: boolean
+  emailType?: boolean
   confidence?: boolean
   followers?: boolean
   engagementRate?: boolean
+  bio?: boolean
+  rawText?: boolean
+  hashtags?: boolean
+  crawlTargets?: boolean
+  verified?: boolean
+  avatar?: boolean
+  videoCount?: boolean
+  totalViews?: boolean
+  avgViews?: boolean
+  avgLikes?: boolean
+  topVideoViews?: boolean
+  scrapeHits?: boolean
+  recentActivity?: boolean
   rawData?: boolean
+  affinityProfile?: boolean
+  campaignFitScore?: boolean
   createdAt?: boolean
   khSet?: boolean | Prisma.KHSetDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["result"]>
@@ -721,21 +1556,40 @@ export type ResultSelectScalar = {
   id?: boolean
   khSetId?: boolean
   platform?: boolean
+  platformId?: boolean
   creatorName?: boolean
   creatorHandle?: boolean
   profileUrl?: boolean
   email?: boolean
   emailSource?: boolean
+  emailType?: boolean
   confidence?: boolean
   followers?: boolean
   engagementRate?: boolean
+  bio?: boolean
+  rawText?: boolean
+  hashtags?: boolean
+  crawlTargets?: boolean
+  verified?: boolean
+  avatar?: boolean
+  videoCount?: boolean
+  totalViews?: boolean
+  avgViews?: boolean
+  avgLikes?: boolean
+  topVideoViews?: boolean
+  scrapeHits?: boolean
+  recentActivity?: boolean
   rawData?: boolean
+  affinityProfile?: boolean
+  campaignFitScore?: boolean
   createdAt?: boolean
 }
 
-export type ResultOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "khSetId" | "platform" | "creatorName" | "creatorHandle" | "profileUrl" | "email" | "emailSource" | "confidence" | "followers" | "engagementRate" | "rawData" | "createdAt", ExtArgs["result"]["result"]>
+export type ResultOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "khSetId" | "platform" | "platformId" | "creatorName" | "creatorHandle" | "profileUrl" | "email" | "emailSource" | "emailType" | "confidence" | "followers" | "engagementRate" | "bio" | "rawText" | "hashtags" | "crawlTargets" | "verified" | "avatar" | "videoCount" | "totalViews" | "avgViews" | "avgLikes" | "topVideoViews" | "scrapeHits" | "recentActivity" | "rawData" | "affinityProfile" | "campaignFitScore" | "createdAt", ExtArgs["result"]["result"]>
 export type ResultInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   khSet?: boolean | Prisma.KHSetDefaultArgs<ExtArgs>
+  enrichmentRuns?: boolean | Prisma.Result$enrichmentRunsArgs<ExtArgs>
+  _count?: boolean | Prisma.ResultCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ResultIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   khSet?: boolean | Prisma.KHSetDefaultArgs<ExtArgs>
@@ -748,20 +1602,38 @@ export type $ResultPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
   name: "Result"
   objects: {
     khSet: Prisma.$KHSetPayload<ExtArgs>
+    enrichmentRuns: Prisma.$EnrichmentRunPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     khSetId: string
     platform: string
+    platformId: string | null
     creatorName: string | null
     creatorHandle: string | null
     profileUrl: string | null
     email: string | null
     emailSource: string | null
+    emailType: string | null
     confidence: string | null
     followers: string | null
     engagementRate: string | null
+    bio: string | null
+    rawText: string | null
+    hashtags: string | null
+    crawlTargets: string | null
+    verified: boolean | null
+    avatar: string | null
+    videoCount: number | null
+    totalViews: number | null
+    avgViews: number | null
+    avgLikes: number | null
+    topVideoViews: number | null
+    scrapeHits: number | null
+    recentActivity: string | null
     rawData: runtime.JsonValue | null
+    affinityProfile: runtime.JsonValue | null
+    campaignFitScore: number | null
     createdAt: Date
   }, ExtArgs["result"]["result"]>
   composites: {}
@@ -1158,6 +2030,7 @@ readonly fields: ResultFieldRefs;
 export interface Prisma__ResultClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   khSet<T extends Prisma.KHSetDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.KHSetDefaultArgs<ExtArgs>>): Prisma.Prisma__KHSetClient<runtime.Types.Result.GetResult<Prisma.$KHSetPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  enrichmentRuns<T extends Prisma.Result$enrichmentRunsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Result$enrichmentRunsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EnrichmentRunPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1190,15 +2063,32 @@ export interface ResultFieldRefs {
   readonly id: Prisma.FieldRef<"Result", 'String'>
   readonly khSetId: Prisma.FieldRef<"Result", 'String'>
   readonly platform: Prisma.FieldRef<"Result", 'String'>
+  readonly platformId: Prisma.FieldRef<"Result", 'String'>
   readonly creatorName: Prisma.FieldRef<"Result", 'String'>
   readonly creatorHandle: Prisma.FieldRef<"Result", 'String'>
   readonly profileUrl: Prisma.FieldRef<"Result", 'String'>
   readonly email: Prisma.FieldRef<"Result", 'String'>
   readonly emailSource: Prisma.FieldRef<"Result", 'String'>
+  readonly emailType: Prisma.FieldRef<"Result", 'String'>
   readonly confidence: Prisma.FieldRef<"Result", 'String'>
   readonly followers: Prisma.FieldRef<"Result", 'String'>
   readonly engagementRate: Prisma.FieldRef<"Result", 'String'>
+  readonly bio: Prisma.FieldRef<"Result", 'String'>
+  readonly rawText: Prisma.FieldRef<"Result", 'String'>
+  readonly hashtags: Prisma.FieldRef<"Result", 'String'>
+  readonly crawlTargets: Prisma.FieldRef<"Result", 'String'>
+  readonly verified: Prisma.FieldRef<"Result", 'Boolean'>
+  readonly avatar: Prisma.FieldRef<"Result", 'String'>
+  readonly videoCount: Prisma.FieldRef<"Result", 'Int'>
+  readonly totalViews: Prisma.FieldRef<"Result", 'Int'>
+  readonly avgViews: Prisma.FieldRef<"Result", 'Int'>
+  readonly avgLikes: Prisma.FieldRef<"Result", 'Int'>
+  readonly topVideoViews: Prisma.FieldRef<"Result", 'Int'>
+  readonly scrapeHits: Prisma.FieldRef<"Result", 'Int'>
+  readonly recentActivity: Prisma.FieldRef<"Result", 'String'>
   readonly rawData: Prisma.FieldRef<"Result", 'Json'>
+  readonly affinityProfile: Prisma.FieldRef<"Result", 'Json'>
+  readonly campaignFitScore: Prisma.FieldRef<"Result", 'Float'>
   readonly createdAt: Prisma.FieldRef<"Result", 'DateTime'>
 }
     
@@ -1593,6 +2483,30 @@ export type ResultDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * Limit how many Results to delete.
    */
   limit?: number
+}
+
+/**
+ * Result.enrichmentRuns
+ */
+export type Result$enrichmentRunsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the EnrichmentRun
+   */
+  select?: Prisma.EnrichmentRunSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the EnrichmentRun
+   */
+  omit?: Prisma.EnrichmentRunOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.EnrichmentRunInclude<ExtArgs> | null
+  where?: Prisma.EnrichmentRunWhereInput
+  orderBy?: Prisma.EnrichmentRunOrderByWithRelationInput | Prisma.EnrichmentRunOrderByWithRelationInput[]
+  cursor?: Prisma.EnrichmentRunWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.EnrichmentRunScalarFieldEnum | Prisma.EnrichmentRunScalarFieldEnum[]
 }
 
 /**

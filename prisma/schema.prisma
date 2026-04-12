@@ -265,6 +265,8 @@ model Campaign {
   trendingTopics      String?
   competitorBrands    String?
   additionalKeywords  String?
+  targetLeads         Int        @default(2000)
+  maxIterations       Int        @default(10)
   documents           Document[]
   khSets              KHSet[]
   createdAt           DateTime   @default(now())
@@ -306,10 +308,11 @@ model KHSet {
   hashtags       String[]
   locked         Boolean   @default(false)
   status         String    @default("draft")
-  platform       String?
-  n8nExecutionId String?
-  results        Result[]
-  parentSetId    String?
+  platform         String?
+  n8nExecutionId   String?
+  results          Result[]
+  parentSetId      String?
+  iterationNumber  Int       @default(1)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

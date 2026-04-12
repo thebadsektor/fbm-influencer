@@ -23,6 +23,15 @@ export interface KHGenerationParams {
   maxHashtags: number;
   provider: LLMProvider;
   userId?: string;
+  // Iteration context — provided for 2nd+ rounds
+  iterationNumber?: number;
+  previousKeywords?: string[];
+  previousHashtags?: string[];
+  previousResults?: {
+    creatorsFound: number;
+    topCreatorThemes: string[];
+    topHashtagsFromContent: string[];
+  };
 }
 
 /**
@@ -39,9 +48,32 @@ export async function generateKHSet(params: KHGenerationParams) {
     maxHashtags,
     provider,
     userId,
+    iterationNumber,
+    previousKeywords,
+    previousHashtags,
+    previousResults,
   } = params;
 
   const docContext = documentContents.filter(Boolean).join("\n\n---\n\n");
+  const isIteration = iterationNumber && iterationNumber > 1;
+
+  let iterationContext = "";
+  if (isIteration && previousKeywords?.length) {
+    iterationContext = `
+ITERATION CONTEXT (Round ${iterationNumber}):
+This is NOT the first run. Previous rounds already used these keywords and hashtags.
+You MUST generate ENTIRELY DIFFERENT ones — do not repeat any.
+
+Previously used keywords: ${previousKeywords.join(", ")}
+Previously used hashtags: ${previousHashtags?.join(", ") || "none"}
+Creators found so far: ${previousResults?.creatorsFound || 0}
+${previousResults?.topCreatorThemes?.length ? `Top themes from discovered creators: ${previousResults.topCreatorThemes.join(", ")}` : ""}
+${previousResults?.topHashtagsFromContent?.length ? `Popular hashtags in scraped content: ${previousResults.topHashtagsFromContent.join(", ")}` : ""}
+
+Strategy: Use the themes and hashtags found in scraped content as INSPIRATION for new search terms.
+Explore adjacent niches, related topics, and alternative phrasing.
+The goal is to find NEW creators, not the same ones again.`;
+  }
 
   const prompt = `You are an influencer marketing specialist. Generate keywords and hashtags for finding TikTok and YouTube creators matching this campaign brief.
 
@@ -58,6 +90,7 @@ Campaign:
 - Additional Keywords: ${campaign.additionalKeywords || "N/A"}
 
 ${docContext ? `Context Documents:\n${docContext}` : ""}
+${iterationContext}
 
 Generate ${minKeywords}-${maxKeywords} search keywords and ${minHashtags}-${maxHashtags} hashtags (with # prefix) that would be effective for finding relevant influencers on TikTok and YouTube.
 
@@ -73,6 +106,7 @@ Return ONLY valid JSON in this exact format, no other text:
       campaignId,
       keywords: parsed.keywords,
       hashtags: parsed.hashtags,
+      iterationNumber: iterationNumber || 1,
     },
   });
 
