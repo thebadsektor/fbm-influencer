@@ -96,6 +96,9 @@ function ProgressView({ campaign, onAbort, onRefresh }: {
     .filter((s) => s.status === "completed")
     .reduce((sum, s) => s.totalScraped || (s._count?.results ?? 0), 0);
   const progress = Math.min(100, Math.round((totalLeads / campaign.targetLeads) * 100));
+  const totalCost = (campaign.iterations || []).reduce(
+    (sum, i) => sum + (i.profilingCost ?? 0), 0
+  );
   const isRunning = ["discovering", "iterating", "aborting", "profiling", "analyzing"].includes(campaign.status);
   const isProcessing = campaign.khSets.some((s) => s.status === "processing");
 
@@ -155,6 +158,7 @@ function ProgressView({ campaign, onAbort, onRefresh }: {
           </div>
           <p className="text-sm text-muted-foreground mt-2">
             {progress}% complete &middot; {campaign.khSets.filter((s) => s.status === "completed").length} rounds completed
+            {totalCost > 0 && ` \u00b7 AI cost: $${totalCost.toFixed(2)}`}
             {isProcessing && " \u00b7 Scraping..."}
             {campaign.status === "profiling" && " \u00b7 AI profiling creators..."}
             {campaign.status === "analyzing" && " \u00b7 Analyzing results..."}
@@ -227,6 +231,11 @@ function ProgressView({ campaign, onAbort, onRefresh }: {
                       {iteration.analysisNarrative && (
                         <p className="text-xs text-muted-foreground italic line-clamp-2">
                           {iteration.analysisNarrative}
+                        </p>
+                      )}
+                      {(iteration.profilingCost != null && iteration.profilingCost > 0) && (
+                        <p className="text-xs text-muted-foreground">
+                          AI cost: ${iteration.profilingCost.toFixed(3)} &middot; {iteration.profiledCount} profiled, {iteration.skippedCount} skipped
                         </p>
                       )}
                     </div>

@@ -1,9 +1,9 @@
 export const MARKETING_GOALS = [
+  "Lead Generation",
   "Awareness",
+  "Brand Awareness",
   "Conversions",
   "UGC",
-  "Brand Awareness",
-  "Lead Generation",
 ] as const;
 
 export const AGE_RANGES = [
