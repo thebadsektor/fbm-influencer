@@ -276,10 +276,10 @@ export default function CampaignDetailPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        minKeywords: campaign?.targetKeywords ?? 10,
-        maxKeywords: campaign?.targetKeywords ?? 10,
-        minHashtags: campaign?.targetHashtags ?? 10,
-        maxHashtags: campaign?.targetHashtags ?? 10,
+        minKeywords: campaign?.targetKeywords ?? 50,
+        maxKeywords: campaign?.targetKeywords ?? 50,
+        minHashtags: campaign?.targetHashtags ?? 50,
+        maxHashtags: campaign?.targetHashtags ?? 50,
         provider,
       }),
     });

@@ -127,8 +127,8 @@ function NewCampaignPageInner() {
     minFollowers: "10000",
     minEngagementRate: 3,
     numberOfInfluencers: 25,
-    targetKeywords: 10,
-    targetHashtags: 10,
+    targetKeywords: 50,
+    targetHashtags: 50,
     trendingTopics: "",
     additionalKeywords: "",
   });
