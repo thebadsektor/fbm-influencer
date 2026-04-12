@@ -472,10 +472,11 @@ function NewCampaignPageInner() {
               <Label>Marketing Goal</Label>
               <Select
                 value={form.marketingGoal}
+                defaultValue="Lead Generation"
                 onValueChange={(v) => v && setForm({ ...form, marketingGoal: v })}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Lead Generation" />
                 </SelectTrigger>
                 <SelectContent>
                   {MARKETING_GOALS.map((g) => (
