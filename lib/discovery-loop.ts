@@ -71,19 +71,6 @@ export async function triggerNextIteration(
     return;
   }
 
-  // ── PHASE 1: Batch Affinity Profiling ──
-  await prisma.campaign.update({ where: { id: campaignId }, data: { status: "profiling" } });
-
-  const unprofiledResults = await prisma.result.findMany({
-    where: { khSetId: completedKhSetId, affinityProfile: { equals: Prisma.DbNull } },
-    select: {
-      id: true, platform: true, platformId: true,
-      creatorName: true, creatorHandle: true,
-      bio: true, rawText: true, hashtags: true,
-      followers: true, engagementRate: true,
-    },
-  });
-
   const campaignContext: CampaignContext = {
     name: campaign.name,
     marketingGoal: campaign.marketingGoal,
@@ -93,14 +80,53 @@ export async function triggerNextIteration(
     audienceInterests: campaign.audienceInterests,
   };
 
-  // Get exclusion patterns from last iteration (if any)
+  const currentKhSet = campaign.khSets.find((s) => s.id === completedKhSetId)!;
   const lastIteration = campaign.iterations[campaign.iterations.length - 1];
   const priorExclusions = lastIteration?.exclusionPatterns as unknown as ExclusionPatterns | undefined;
 
-  const profilingResult = await profileBatch(unprofiledResults, campaignContext, {
-    khSetId: completedKhSetId,
-    exclusionPatterns: priorExclusions as Record<string, unknown> | undefined,
-  });
+  // ── PHASE 1: Batch Affinity Profiling ──
+  let profilingResult;
+  try {
+    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "profiling" } });
+
+    const unprofiledResults = await prisma.result.findMany({
+      where: { khSetId: completedKhSetId, affinityProfile: { equals: Prisma.DbNull } },
+      select: {
+        id: true, platform: true, platformId: true,
+        creatorName: true, creatorHandle: true,
+        bio: true, rawText: true, hashtags: true,
+        followers: true, engagementRate: true,
+      },
+    });
+
+    const withData = unprofiledResults.filter(r =>
+      (r.rawText && r.rawText.trim().length > 10) || (r.bio && r.bio.trim().length > 5)
+    );
+    const withoutData = unprofiledResults.length - withData.length;
+
+    await publishDiscoveryEvent(completedKhSetId, "profiling_summary",
+      `${unprofiledResults.length} creators to evaluate. ${withData.length} have enough content for AI analysis. ${withoutData} will be set aside (insufficient data).`);
+
+    profilingResult = await profileBatch(unprofiledResults, campaignContext, {
+      khSetId: completedKhSetId,
+      exclusionPatterns: priorExclusions as Record<string, unknown> | undefined,
+    });
+
+    // Check if profiling actually worked
+    if (profilingResult.profiledCount === 0 && profilingResult.errors > 0) {
+      throw new Error(`All ${profilingResult.errors} profiling calls failed. Check OPENAI_API_KEY.`);
+    }
+
+    await publishDiscoveryEvent(completedKhSetId, "profiling_done",
+      `AI profiling complete. ${profilingResult.profiledCount} profiled, ${profilingResult.skippedCount} skipped. Avg campaign fit: ${profilingResult.avgFitScore}/100. Cost: $${profilingResult.cost.toFixed(2)}`);
+
+  } catch (err) {
+    console.error("[discovery-loop] Profiling failed:", err);
+    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "failed" } });
+    await publishDiscoveryEvent(completedKhSetId, "error",
+      `AI profiling failed: ${err instanceof Error ? err.message : String(err)}`);
+    return;
+  }
 
   // ── Abort check (profiling took time) ──
   const refreshedCampaign = await prisma.campaign.findUnique({ where: { id: campaignId }, select: { status: true } });
@@ -114,33 +140,46 @@ export async function triggerNextIteration(
     await prisma.campaign.update({ where: { id: campaignId }, data: { status: "completed" } });
     await publishDiscoveryEvent(completedKhSetId, "campaign_completed",
       `Low quality — avg fit score ${profilingResult.avgFitScore}/100. Stopping to avoid wasted searches.`);
-    // Still save the iteration memory before stopping
     await saveIterationMemory(campaignId, completedKhSetId, completedIterations,
-      campaign.khSets.find(s => s.id === completedKhSetId)!, profilingResult, null);
+      currentKhSet, profilingResult, null);
     return;
   }
 
   // ── PHASE 2: Iteration Analysis ──
-  await prisma.campaign.update({ where: { id: campaignId }, data: { status: "analyzing" } });
+  let analysis;
+  try {
+    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "analyzing" } });
+    await publishDiscoveryEvent(completedKhSetId, "analysis_started",
+      `Analyzing round ${completedIterations} results — identifying what worked, what didn't, and planning strategy...`);
 
-  const currentKhSet = campaign.khSets.find((s) => s.id === completedKhSetId)!;
-  const previousIterationsData = campaign.iterations.map((i) => ({
-    iterationNumber: i.iterationNumber,
-    keywordsUsed: i.keywordsUsed,
-    hashtagsUsed: i.hashtagsUsed,
-    avgFitScore: i.avgFitScore,
-    topPerformingKeywords: i.topPerformingKeywords,
-    lowPerformingKeywords: i.lowPerformingKeywords,
-    learnings: i.learnings,
-    strategyForNext: i.strategyForNext,
-    exclusionPatterns: i.exclusionPatterns,
-  }));
+    const previousIterationsData = campaign.iterations.map((i) => ({
+      iterationNumber: i.iterationNumber,
+      keywordsUsed: i.keywordsUsed,
+      hashtagsUsed: i.hashtagsUsed,
+      avgFitScore: i.avgFitScore,
+      topPerformingKeywords: i.topPerformingKeywords,
+      lowPerformingKeywords: i.lowPerformingKeywords,
+      learnings: i.learnings,
+      strategyForNext: i.strategyForNext,
+      exclusionPatterns: i.exclusionPatterns,
+    }));
 
-  const analysis = await analyzeIteration(
-    campaignId, completedKhSetId, profilingResult, campaignContext,
-    currentKhSet.keywords, currentKhSet.hashtags,
-    previousIterationsData
-  );
+    analysis = await analyzeIteration(
+      campaignId, completedKhSetId, profilingResult, campaignContext,
+      currentKhSet.keywords, currentKhSet.hashtags,
+      previousIterationsData
+    );
+
+    await publishDiscoveryEvent(completedKhSetId, "analysis_done",
+      `Analysis complete. ${analysis.learnings.length} learnings. Top keywords: ${analysis.topPerformingKeywords.slice(0, 3).join(", ") || "none identified"}`);
+
+  } catch (err) {
+    console.error("[discovery-loop] Analysis failed:", err);
+    // Analysis failure is non-fatal — save what we have and continue
+    analysis = null;
+    await publishDiscoveryEvent(completedKhSetId, "warning",
+      `Analysis failed but continuing: ${err instanceof Error ? err.message : String(err)}`);
+  }
 
   // ── PHASE 3: Store Iteration Memory ──
   await saveIterationMemory(campaignId, completedKhSetId, completedIterations,
@@ -155,13 +194,17 @@ export async function triggerNextIteration(
 
   const allPreviousKeywords = campaign.khSets.flatMap((s) => s.keywords);
   const allPreviousHashtags = campaign.khSets.flatMap((s) => s.hashtags);
-  const allLearnings = [...campaign.iterations.flatMap((i) => i.learnings), ...analysis.learnings];
+  const allLearnings = [...campaign.iterations.flatMap((i) => i.learnings), ...(analysis?.learnings ?? [])];
+
+  const defaultExclusions: ExclusionPatterns = {
+    themePatterns: [], followerCeiling: null, handlePatterns: [], lowFitThemes: [], collaboratabilityFlags: [],
+  };
 
   const strategyContext: StrategyContext = {
-    topPerformingKeywords: analysis.topPerformingKeywords,
-    lowPerformingKeywords: analysis.lowPerformingKeywords,
-    exclusionPatterns: analysis.exclusionPatterns,
-    strategyRecommendation: analysis.strategyForNext,
+    topPerformingKeywords: analysis?.topPerformingKeywords ?? [],
+    lowPerformingKeywords: analysis?.lowPerformingKeywords ?? [],
+    exclusionPatterns: analysis?.exclusionPatterns ?? defaultExclusions,
+    strategyRecommendation: analysis?.strategyForNext ?? "",
     accumulatedLearnings: allLearnings,
     avgFitScoreByIteration: [
       ...campaign.iterations.map((i) => i.avgFitScore),
@@ -188,7 +231,7 @@ export async function triggerNextIteration(
       previousResults: {
         creatorsFound: totalLeads,
         topCreatorThemes: Object.keys(profilingResult.contentThemeFrequency).slice(0, 15),
-        topHashtagsFromContent: Object.keys(analysis.contentThemeFrequency).slice(0, 20),
+        topHashtagsFromContent: Object.keys(analysis?.contentThemeFrequency ?? profilingResult.contentThemeFrequency).slice(0, 20),
       },
       strategyContext,
     });

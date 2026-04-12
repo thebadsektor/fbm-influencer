@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequiredUser } from "@/lib/auth-helpers";
+import { checkKHSetCompletion } from "@/lib/completion-detector";
 
 type Params = { params: Promise<{ id: string; khSetId: string }> };
 
@@ -12,11 +13,21 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const campaign = await prisma.campaign.findFirst({ where: { id, userId: user.id } });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Check for completion on each poll (stabilization-based)
+  await checkKHSetCompletion(khSetId).catch((err) => {
+    console.error("[kh-set-get] Completion check error:", err);
+  });
+
   const set = await prisma.kHSet.findUnique({
     where: { id: khSetId },
     include: { results: { orderBy: { createdAt: "desc" } } },
   });
   if (!set) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Include live result count (more accurate than stored totalScraped during scraping)
+  const liveResultCount = set.status === "processing"
+    ? await prisma.result.count({ where: { khSetId } })
+    : set.totalScraped;
 
   // Include campaign status and iteration intelligence
   const iteration = await prisma.campaignIteration.findFirst({
@@ -25,6 +36,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   return NextResponse.json({
     ...set,
+    totalScraped: liveResultCount || set.totalScraped,
     campaignStatus: campaign?.status,
     iteration: iteration ? {
       profiledCount: iteration.profiledCount,

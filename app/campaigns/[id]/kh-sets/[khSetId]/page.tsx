@@ -114,6 +114,14 @@ interface LogEntry {
 
 // ── Live Log Component ──
 
+function formatElapsed(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return `${h}h ${m}m`;
+}
+
 function LiveLog({
   khSetId,
   isActive,
@@ -130,82 +138,77 @@ function LiveLog({
   const esRef = useRef<EventSource | null>(null);
   const lastRealEventRef = useRef<number>(Date.now());
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const hasConnectedRef = useRef(false);
+  const isActiveRef = useRef(isActive);
+  isActiveRef.current = isActive;
 
+  // Single stable effect — opens SSE once per khSetId, manages lifecycle via refs
   useEffect(() => {
-    if (!isActive || hasConnectedRef.current) return;
-
     const params = window.location.pathname.split("/");
     const campaignId = params[2];
     const url = `/api/campaigns/${campaignId}/kh-sets/${khSetId}/stream`;
 
-    try {
-      const es = new EventSource(url);
-      esRef.current = es;
-      hasConnectedRef.current = true;
-
-      es.onopen = () => setSseConnected(true);
-
-      es.onmessage = (event) => {
-        try {
-          const entry: LogEntry = JSON.parse(event.data);
-          // Skip duplicate "connected" messages
-          if (entry.stage === "connected") {
-            setSseConnected(true);
-            setLogs((prev) => {
-              if (prev.some((l) => l.stage === "connected")) return prev;
-              return [...prev, entry];
-            });
-            return;
-          }
-          lastRealEventRef.current = Date.now();
-          setLogs((prev) => [...prev, entry]);
-        } catch {
-          // Skip unparseable events
-        }
-      };
-
-      es.onerror = () => setSseConnected(false);
-
-      // Idle message timer
-      idleTimerRef.current = setInterval(() => {
-        const elapsed = Math.round((Date.now() - lastRealEventRef.current) / 1000);
-        if (elapsed >= 25) {
-          const msg = IDLE_MESSAGES[Math.floor(Math.random() * IDLE_MESSAGES.length)];
-          setLogs((prev) => [
-            ...prev,
-            {
-              stage: "idle",
-              message: `${msg} (${elapsed}s since last update)`,
-              timestamp: new Date().toISOString(),
-            },
-          ]);
-        }
-      }, 25000);
-    } catch {
-      setSseConnected(false);
+    // Close any existing connection
+    if (esRef.current) {
+      esRef.current.close();
+      esRef.current = null;
     }
+    if (idleTimerRef.current) {
+      clearInterval(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+
+    if (!isActiveRef.current) return;
+
+    const es = new EventSource(url);
+    esRef.current = es;
+
+    es.onopen = () => setSseConnected(true);
+
+    es.onmessage = (event) => {
+      try {
+        const entry: LogEntry = JSON.parse(event.data);
+        if (entry.stage === "connected") {
+          setSseConnected(true);
+          // Only show first connected message
+          setLogs((prev) => prev.some((l) => l.stage === "connected") ? prev : [...prev, entry]);
+          return;
+        }
+        lastRealEventRef.current = Date.now();
+        setLogs((prev) => [...prev, entry]);
+      } catch {
+        // Skip unparseable (heartbeats)
+      }
+    };
+
+    es.onerror = () => {
+      // Don't toggle connected state on every error — EventSource auto-reconnects
+      // Only mark disconnected if we've been erroring for a while
+    };
+
+    // Idle timer
+    idleTimerRef.current = setInterval(() => {
+      if (!isActiveRef.current) return;
+      const elapsed = Math.round((Date.now() - lastRealEventRef.current) / 1000);
+      if (elapsed >= 30) {
+        const msg = IDLE_MESSAGES[Math.floor(Math.random() * IDLE_MESSAGES.length)];
+        setLogs((prev) => [
+          ...prev,
+          {
+            stage: "idle",
+            message: `${msg} (${formatElapsed(elapsed)} since last update)`,
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+      }
+    }, 30000);
 
     return () => {
       if (idleTimerRef.current) clearInterval(idleTimerRef.current);
-      if (esRef.current) {
-        esRef.current.close();
-        esRef.current = null;
-      }
-      hasConnectedRef.current = false;
+      if (esRef.current) { esRef.current.close(); esRef.current = null; }
       setSseConnected(false);
     };
-  }, [khSetId, isActive, setLogs]);
-
-  // Close SSE when no longer active (but keep logs)
-  useEffect(() => {
-    if (!isActive && esRef.current) {
-      esRef.current.close();
-      esRef.current = null;
-      hasConnectedRef.current = false;
-      if (idleTimerRef.current) clearInterval(idleTimerRef.current);
-    }
-  }, [isActive]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [khSetId]);
 
   // Auto-scroll
   useEffect(() => {
@@ -598,14 +601,28 @@ export default function KHSetDetailPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={set.status === "completed" ? "default" : set.status === "failed" ? "destructive" : "secondary"} className="text-sm px-3 py-1">
-            {set.status}
-          </Badge>
-          {set.campaignStatus && !["draft", "completed", "aborted", "failed"].includes(set.campaignStatus) && (
-            <Badge variant="secondary" className="text-sm px-3 py-1 animate-pulse">
-              {set.campaignStatus}
-            </Badge>
-          )}
+          {(() => {
+            const cs = set.campaignStatus || "";
+            const isPostScrape = ["profiling", "analyzing", "iterating"].includes(cs);
+            if (set.status === "completed" && isPostScrape) {
+              return (
+                <>
+                  <Badge variant="outline" className="text-sm px-3 py-1">scraping done</Badge>
+                  <Badge variant="secondary" className="text-sm px-3 py-1 animate-pulse">
+                    {cs === "profiling" ? "AI profiling..." : cs === "analyzing" ? "analyzing results..." : "preparing next round..."}
+                  </Badge>
+                </>
+              );
+            }
+            if (set.status === "completed" && (!cs || ["completed", "draft"].includes(cs))) {
+              return <Badge variant="default" className="text-sm px-3 py-1">completed</Badge>;
+            }
+            return (
+              <Badge variant={set.status === "failed" ? "destructive" : "secondary"} className="text-sm px-3 py-1">
+                {set.status === "processing" ? "scraping..." : set.status}
+              </Badge>
+            );
+          })()}
         </div>
       </div>
 
