@@ -4,11 +4,28 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { TimelineStep, type StepStatus } from "@/components/campaign/TimelineStep";
+import { AutoPlayTimer } from "@/components/campaign/AutoPlayTimer";
 import type { LLMProvider } from "@/lib/llm";
 import { PROVIDER_LABELS } from "@/lib/llm";
+import { IDLE_MESSAGES } from "@/lib/idle-messages";
 import {
   ArrowLeft,
   Upload,
@@ -18,44 +35,67 @@ import {
   Sparkles,
   Loader2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   X,
   Trash2,
   Users,
   Target,
   StopCircle,
   CheckCircle2,
-  Clock,
   AlertCircle,
+  Search,
+  Brain,
+  Lightbulb,
+  Mail,
+  Maximize2,
+  ExternalLink,
+  DollarSign,
+  Clock,
+  RotateCcw,
 } from "lucide-react";
 
-const PROVIDERS: LLMProvider[] = ["openai", "anthropic", "gemini"];
+// ── Types ──
 
-interface KHSetSummary {
+interface Result {
   id: string;
-  status: string;
-  locked: boolean;
-  keywords: string[];
-  hashtags: string[];
-  iterationNumber: number;
-  createdAt: string;
-  _count?: { results: number };
-  totalScraped: number;
+  platform: string;
+  creatorName: string | null;
+  creatorHandle: string | null;
+  profileUrl: string | null;
+  email: string | null;
+  followers: string | null;
+  engagementRate: string | null;
+  bio: string | null;
+  avatar: string | null;
+  campaignFitScore: number | null;
 }
 
-interface IterationSummary {
-  id: string;
-  iterationNumber: number;
-  resultsCount: number;
+interface IterationData {
+  khSetId: string | null;
   profiledCount: number;
   skippedCount: number;
   avgFitScore: number | null;
-  fitDistribution: Record<string, number> | null;
-  topPerformingKeywords: string[];
-  lowPerformingKeywords: string[];
+  profilingCost: number | null;
+  profilingDuration: number | null;
+  discoveryDuration: number | null;
   analysisNarrative: string | null;
   strategyForNext: string | null;
   learnings: string[];
-  profilingCost: number | null;
+  topPerformingKeywords: string[];
+  lowPerformingKeywords: string[];
+}
+
+interface KHSetData {
+  id: string;
+  status: string;
+  keywords: string[];
+  hashtags: string[];
+  iterationNumber: number;
+  totalScraped: number;
+  createdAt: string;
+  platform: string | null;
+  _count?: { results: number };
 }
 
 interface Campaign {
@@ -68,9 +108,17 @@ interface Campaign {
   targetKeywords: number;
   targetHashtags: number;
   documents: { id: string; filename: string; createdAt: string }[];
-  khSets: KHSetSummary[];
-  iterations: IterationSummary[];
+  khSets: KHSetData[];
+  iterations: IterationData[];
 }
+
+interface LogEntry {
+  stage: string;
+  message: string;
+  timestamp: string;
+}
+
+const PROVIDERS: LLMProvider[] = ["openai", "anthropic", "gemini"];
 
 function getFileIcon(filename: string) {
   if (filename.endsWith(".pdf")) return <FileText className="h-4 w-4 text-red-500" />;
@@ -78,188 +126,386 @@ function getFileIcon(filename: string) {
   return <File className="h-4 w-4 text-muted-foreground" />;
 }
 
-function statusBadgeVariant(status: string) {
-  switch (status) {
-    case "completed": return "default" as const;
-    case "failed": case "aborted": return "destructive" as const;
-    case "discovering": case "iterating": case "processing": case "profiling": case "analyzing": return "secondary" as const;
-    default: return "outline" as const;
-  }
+function formatFollowers(f: string | null) {
+  if (!f) return "-";
+  const n = parseInt(f);
+  if (isNaN(n)) return f;
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(0)}K`;
+  return String(n);
 }
 
-function ProgressView({ campaign, onAbort, onRefresh }: {
-  campaign: Campaign;
-  onAbort: () => void;
-  onRefresh: () => void;
+function formatDuration(seconds: number | null | undefined): string {
+  if (!seconds) return "";
+  if (seconds < 60) return `${seconds}s`;
+  return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+}
+
+// ── Live Log (inline, not a separate component) ──
+
+function useLiveLog(khSetId: string | null, isActive: boolean) {
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const esRef = useRef<EventSource | null>(null);
+  const lastRealRef = useRef(Date.now());
+  const idleRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!khSetId || !isActive) return;
+
+    const parts = window.location.pathname.split("/");
+    const campaignId = parts[2];
+    const url = `/api/campaigns/${campaignId}/kh-sets/${khSetId}/stream`;
+
+    if (esRef.current) { esRef.current.close(); esRef.current = null; }
+    if (idleRef.current) { clearInterval(idleRef.current); idleRef.current = null; }
+
+    const es = new EventSource(url);
+    esRef.current = es;
+
+    es.onmessage = (event) => {
+      try {
+        const entry: LogEntry = JSON.parse(event.data);
+        if (entry.stage === "connected") {
+          setLogs((p) => p.some((l) => l.stage === "connected") ? p : [...p, entry]);
+          return;
+        }
+        lastRealRef.current = Date.now();
+        setLogs((p) => [...p, entry]);
+      } catch { /* heartbeat */ }
+    };
+
+    idleRef.current = setInterval(() => {
+      const elapsed = Math.round((Date.now() - lastRealRef.current) / 1000);
+      if (elapsed >= 30) {
+        const msg = IDLE_MESSAGES[Math.floor(Math.random() * IDLE_MESSAGES.length)];
+        const fmt = elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`;
+        setLogs((p) => [...p, { stage: "idle", message: `${msg} (${fmt} since last update)`, timestamp: new Date().toISOString() }]);
+      }
+    }, 30000);
+
+    return () => {
+      if (idleRef.current) clearInterval(idleRef.current);
+      if (esRef.current) { esRef.current.close(); esRef.current = null; }
+    };
+  }, [khSetId, isActive]);
+
+  return logs;
+}
+
+// ── Results Modal ──
+
+function ResultsModal({ results, open, onClose, title }: {
+  results: Result[];
+  open: boolean;
+  onClose: () => void;
+  title: string;
 }) {
-  const totalLeads = campaign.khSets
-    .filter((s) => s.status === "completed")
-    .reduce((sum, s) => sum + (s.totalScraped || (s._count?.results ?? 0)), 0);
-  const progress = Math.min(100, Math.round((totalLeads / campaign.targetLeads) * 100));
-  const totalCost = (campaign.iterations || []).reduce(
-    (sum, i) => sum + (i.profilingCost ?? 0), 0
-  );
-  const isRunning = ["discovering", "iterating", "aborting", "profiling", "analyzing"].includes(campaign.status);
-  const isProcessing = campaign.khSets.some((s) => s.status === "processing");
+  const [page, setPage] = useState(0);
+  const perPage = 25;
+  const totalPages = Math.ceil(results.length / perPage);
+  const pageResults = results.slice(page * perPage, (page + 1) * perPage);
 
   return (
-    <div className="space-y-6">
-      {/* Progress Header */}
-      <Card>
-        <CardContent className="pt-6 pb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Discovery Progress</p>
-              <p className="text-3xl font-bold">
-                {totalLeads.toLocaleString()} <span className="text-lg font-normal text-muted-foreground">/ {campaign.targetLeads.toLocaleString()} leads</span>
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {campaign.status === "completed" && (
-                <Badge variant="default" className="text-sm gap-1">
-                  <CheckCircle2 className="h-3 w-3" /> Complete
-                </Badge>
-              )}
-              {campaign.status === "aborting" && (
-                <Badge variant="secondary" className="text-sm gap-1 animate-pulse">
-                  <Clock className="h-3 w-3" /> Stopping after current run...
-                </Badge>
-              )}
-              {campaign.status === "aborted" && (
-                <Badge variant="destructive" className="text-sm gap-1">
-                  <StopCircle className="h-3 w-3" /> Aborted
-                </Badge>
-              )}
-              {campaign.status === "failed" && (
-                <Badge variant="destructive" className="text-sm gap-1">
-                  <AlertCircle className="h-3 w-3" /> Failed
-                </Badge>
-              )}
-              {isRunning && campaign.status !== "aborting" && (
-                <Button variant="destructive" size="sm" onClick={onAbort}>
-                  <StopCircle className="h-4 w-4 mr-1" /> Abort
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                campaign.status === "completed"
-                  ? "bg-green-500"
-                  : campaign.status === "failed" || campaign.status === "aborted"
-                  ? "bg-destructive"
-                  : "bg-primary"
-              } ${isProcessing ? "animate-pulse" : ""}`}
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            {progress}% complete &middot; {campaign.khSets.filter((s) => s.status === "completed").length} rounds completed
-            {totalCost > 0 && ` \u00b7 AI cost: $${totalCost.toFixed(2)}`}
-            {isProcessing && " \u00b7 Scraping..."}
-            {campaign.status === "profiling" && " \u00b7 AI profiling creators..."}
-            {campaign.status === "analyzing" && " \u00b7 Analyzing results..."}
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Iteration List with Intelligence */}
-      <div>
-        <h3 className="scroll-m-20 text-xl font-semibold tracking-tight mb-3">Discovery Rounds</h3>
-        <div className="space-y-3">
-          {campaign.khSets
-            .sort((a, b) => a.iterationNumber - b.iterationNumber)
-            .map((set) => {
-              const iteration = campaign.iterations?.find(
-                (i) => i.iterationNumber === set.iterationNumber
-              );
-              return (
-                <div key={set.id} className="rounded-lg border overflow-hidden">
-                  <Link href={`/campaigns/${campaign.id}/kh-sets/${set.id}`} className="block">
-                    <div className="flex items-center justify-between p-4 hover:bg-muted/30 transition-all">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-sm font-bold">
-                          {set.iterationNumber}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">
-                            Round {set.iterationNumber} &middot; {set.keywords.length} kw, {set.hashtags.length} ht
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {set.status === "completed"
-                              ? `${set.totalScraped || set._count?.results || 0} leads`
-                              : set.status === "processing"
-                              ? "Scraping..."
-                              : set.status}
-                            {iteration?.avgFitScore != null && (
-                              <span className={`ml-2 ${iteration.avgFitScore >= 50 ? "text-green-500" : iteration.avgFitScore >= 25 ? "text-yellow-500" : "text-red-400"}`}>
-                                Fit: {Math.round(iteration.avgFitScore)}/100
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge variant={statusBadgeVariant(set.status)}>
-                        {set.status === "processing" && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                        {set.status}
-                      </Badge>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-[95vw] w-full h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" /> {title} <Badge variant="secondary">{results.length}</Badge>
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 overflow-auto">
+          <Table>
+            <TableHeader><TableRow>
+              <TableHead>Creator</TableHead><TableHead>Platform</TableHead><TableHead>Email</TableHead>
+              <TableHead>Followers</TableHead><TableHead>Fit Score</TableHead><TableHead>Bio</TableHead><TableHead></TableHead>
+            </TableRow></TableHeader>
+            <TableBody>
+              {pageResults.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {r.avatar && <img src={r.avatar} alt="" className="h-6 w-6 rounded-full object-cover" />}
+                      <div><p className="text-sm font-medium truncate">{r.creatorName || "Unknown"}</p>
+                        <p className="text-xs text-muted-foreground">@{r.creatorHandle}</p></div>
                     </div>
-                  </Link>
-
-                  {/* Iteration Intelligence (if available) */}
-                  {iteration && (
-                    <div className="px-4 pb-4 pt-0 border-t bg-muted/10 space-y-2">
-                      {iteration.learnings.length > 0 && (
-                        <div className="text-xs space-y-1">
-                          {iteration.learnings.slice(0, 3).map((l, i) => (
-                            <p key={i} className="text-muted-foreground">• {l}</p>
-                          ))}
-                        </div>
-                      )}
-                      {iteration.topPerformingKeywords.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {iteration.topPerformingKeywords.slice(0, 5).map((kw) => (
-                            <span key={kw} className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 text-xs font-medium">
-                              {kw}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {iteration.analysisNarrative && (
-                        <p className="text-xs text-muted-foreground italic line-clamp-2">
-                          {iteration.analysisNarrative}
-                        </p>
-                      )}
-                      {(iteration.profilingCost != null && iteration.profilingCost > 0) && (
-                        <p className="text-xs text-muted-foreground">
-                          AI cost: ${iteration.profilingCost.toFixed(3)} &middot; {iteration.profiledCount} profiled, {iteration.skippedCount} skipped
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                  </TableCell>
+                  <TableCell><Badge variant="outline" className="text-xs">{r.platform === "TIKTOK" ? "TikTok" : "YouTube"}</Badge></TableCell>
+                  <TableCell>{r.email ? <span className="flex items-center gap-1 text-green-500 text-sm"><Mail className="h-3 w-3" />{r.email}</span> : <span className="text-muted-foreground">-</span>}</TableCell>
+                  <TableCell className="tabular-nums text-sm">{formatFollowers(r.followers)}</TableCell>
+                  <TableCell>{r.campaignFitScore != null ? <Badge variant={r.campaignFitScore >= 60 ? "default" : "secondary"}>{r.campaignFitScore}</Badge> : "-"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{r.bio?.slice(0, 80) || "-"}</TableCell>
+                  <TableCell>{r.profileUrl && <a href={r.profileUrl} target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="sm" className="h-7 px-2"><ExternalLink className="h-3 w-3" /></Button></a>}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-4 border-t">
+            <p className="text-sm text-muted-foreground">Page {page + 1} of {totalPages}</p>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+              <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}><ChevronRight className="h-4 w-4" /></Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Timeline Round ──
+
+function TimelineRound({
+  khSet,
+  iteration,
+  campaignId,
+  campaignStatus,
+  isLatest,
+  results,
+  onRefresh,
+}: {
+  khSet: KHSetData;
+  iteration: IterationData | null;
+  campaignId: string;
+  campaignStatus: string;
+  isLatest: boolean;
+  results: Result[];
+  onRefresh: () => void;
+}) {
+  const [showAllCreators, setShowAllCreators] = useState(false);
+  const [showQualified, setShowQualified] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+
+  const resultCount = khSet.totalScraped || khSet._count?.results || 0;
+  const isActive = khSet.status === "processing" || (isLatest && ["profiling", "analyzing", "awaiting_approval", "iterating"].includes(campaignStatus));
+
+  // Determine step statuses
+  const getDiscoveryStatus = (): StepStatus => {
+    if (khSet.status === "processing") return "active";
+    if (khSet.status === "failed") return "failed";
+    if (khSet.status === "completed") return "completed";
+    return "pending";
+  };
+
+  const getCreatorsStatus = (): StepStatus => {
+    if (khSet.status === "completed" && resultCount > 0) return "completed";
+    if (khSet.status === "processing" && resultCount > 0) return "active";
+    return "pending";
+  };
+
+  const getProfilingStatus = (): StepStatus => {
+    if (iteration && iteration.profiledCount > 0) return "completed";
+    if (isLatest && campaignStatus === "profiling") return "active";
+    if (isLatest && ["analyzing", "awaiting_approval", "iterating"].includes(campaignStatus) && !iteration) return "failed";
+    return "pending";
+  };
+
+  const getOptimizationStatus = (): StepStatus => {
+    if (iteration?.analysisNarrative) return "completed";
+    if (isLatest && campaignStatus === "analyzing") return "active";
+    if (isLatest && campaignStatus === "awaiting_approval") return "completed";
+    return "pending";
+  };
+
+  const logs = useLiveLog(isActive ? khSet.id : null, isActive);
+
+  const handleRetryProfiling = async () => {
+    setRetrying(true);
+    try {
+      await fetch(`/api/campaigns/${campaignId}/kh-sets/${khSet.id}/reanalyze`, { method: "POST" });
+      onRefresh();
+    } finally { setRetrying(false); }
+  };
+
+  const qualifiedResults = results.filter((r) => (r.campaignFitScore ?? 0) >= 60);
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary text-primary-foreground text-sm font-bold">
+          {khSet.iterationNumber}
+        </div>
+        <h3 className="text-lg font-semibold">Round {khSet.iterationNumber}</h3>
+        <span className="text-sm text-muted-foreground">
+          {khSet.keywords.length} kw, {khSet.hashtags.length} ht &middot; {khSet.platform || "both"}
+        </span>
       </div>
+
+      {/* Step 1: Discovery */}
+      <TimelineStep
+        title="Discovery"
+        status={getDiscoveryStatus()}
+        icon={<Search className="h-4 w-4" />}
+        summary={resultCount > 0 ? `${resultCount} creators scraped` : undefined}
+        duration={formatDuration(iteration?.discoveryDuration)}
+        defaultExpanded={isLatest && khSet.status === "processing"}
+      >
+        {logs.length > 0 && (
+          <div className="bg-black/90 rounded-lg p-3 font-mono text-xs max-h-48 overflow-y-auto space-y-0.5">
+            {logs.map((entry, i) => (
+              <div key={i} className={`flex gap-2 ${
+                entry.stage === "error" ? "text-red-400" :
+                entry.stage === "idle" ? "text-muted-foreground/50" :
+                entry.stage.includes("profil") ? "text-purple-400" :
+                entry.stage.includes("analysis") || entry.stage.includes("plan") ? "text-cyan-400" :
+                entry.stage === "results_batch" || entry.stage === "scraping_complete" ? "text-green-400" :
+                "text-foreground"
+              }`}>
+                <span className="text-muted-foreground flex-shrink-0">
+                  [{new Date(entry.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}]
+                </span>
+                <span className="break-words">{entry.message}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </TimelineStep>
+
+      {/* Step 2: Discovered Creators */}
+      <TimelineStep
+        title="Discovered Creators"
+        status={getCreatorsStatus()}
+        icon={<Users className="h-4 w-4" />}
+        summary={resultCount > 0 ? `${resultCount} creators found` : undefined}
+        defaultExpanded={isLatest && getCreatorsStatus() === "completed" && getProfilingStatus() === "pending"}
+      >
+        {results.length > 0 && (
+          <div>
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Creator</TableHead><TableHead>Platform</TableHead><TableHead>Email</TableHead><TableHead>Followers</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {results.slice(0, 5).map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell><div className="min-w-0"><p className="text-sm font-medium truncate">{r.creatorName || "Unknown"}</p><p className="text-xs text-muted-foreground">@{r.creatorHandle}</p></div></TableCell>
+                    <TableCell><Badge variant="outline" className="text-xs">{r.platform === "TIKTOK" ? "TikTok" : "YouTube"}</Badge></TableCell>
+                    <TableCell>{r.email ? <span className="text-green-500 text-sm truncate max-w-[150px] flex items-center gap-1"><Mail className="h-3 w-3" />{r.email}</span> : <span className="text-muted-foreground">-</span>}</TableCell>
+                    <TableCell className="tabular-nums text-sm">{formatFollowers(r.followers)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {results.length > 5 && (
+              <Button variant="outline" size="sm" className="mt-2" onClick={() => setShowAllCreators(true)}>
+                <Maximize2 className="h-3 w-3 mr-1" /> View All ({results.length})
+              </Button>
+            )}
+          </div>
+        )}
+      </TimelineStep>
+
+      {/* Step 3: AI Profiling */}
+      <TimelineStep
+        title="AI Profiling"
+        status={getProfilingStatus()}
+        icon={<Brain className="h-4 w-4" />}
+        summary={iteration ? `${iteration.profiledCount} profiled, ${iteration.skippedCount} skipped. Avg fit: ${Math.round(iteration.avgFitScore ?? 0)}/100` : undefined}
+        duration={formatDuration(iteration?.profilingDuration)}
+        cost={iteration?.profilingCost ? iteration.profilingCost.toFixed(2) : undefined}
+        defaultExpanded={isLatest && getProfilingStatus() === "active"}
+        onRetry={getProfilingStatus() === "failed" || (isLatest && !iteration && khSet.status === "completed") ? handleRetryProfiling : undefined}
+        retryLabel={retrying ? "Retrying..." : "Retry Profiling & Analysis"}
+      >
+        {iteration && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-4 gap-2 text-center">
+              <div className="p-2 rounded-lg bg-muted/50">
+                <p className="text-xl font-bold">{Math.round(iteration.avgFitScore ?? 0)}</p>
+                <p className="text-xs text-muted-foreground">Avg Fit</p>
+              </div>
+              <div className="p-2 rounded-lg bg-muted/50">
+                <p className="text-xl font-bold">{iteration.profiledCount}</p>
+                <p className="text-xs text-muted-foreground">Profiled</p>
+              </div>
+              <div className="p-2 rounded-lg bg-muted/50">
+                <p className="text-xl font-bold">{iteration.skippedCount}</p>
+                <p className="text-xs text-muted-foreground">Skipped</p>
+              </div>
+              <div className="p-2 rounded-lg bg-muted/50">
+                <p className="text-xl font-bold">{qualifiedResults.length}</p>
+                <p className="text-xs text-muted-foreground">Qualified (60+)</p>
+              </div>
+            </div>
+            {qualifiedResults.length > 0 && (
+              <Button variant="outline" size="sm" onClick={() => setShowQualified(true)}>
+                <Users className="h-3 w-3 mr-1" /> View Qualified Leads ({qualifiedResults.length})
+              </Button>
+            )}
+          </div>
+        )}
+        {/* Retry button for stuck campaigns */}
+        {!iteration && isLatest && khSet.status === "completed" && !retrying && (
+          <Button variant="outline" size="sm" onClick={handleRetryProfiling}>
+            <RotateCcw className="h-3 w-3 mr-1" /> Run AI Profiling
+          </Button>
+        )}
+      </TimelineStep>
+
+      {/* Step 4: Optimization Plan */}
+      <TimelineStep
+        title="Optimization Plan"
+        status={getOptimizationStatus()}
+        icon={<Lightbulb className="h-4 w-4" />}
+        summary={iteration?.learnings?.length ? `${iteration.learnings.length} learnings` : undefined}
+        defaultExpanded={isLatest && (campaignStatus === "awaiting_approval" || getOptimizationStatus() === "active")}
+        isLast
+      >
+        {iteration?.analysisNarrative && (
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Analysis</p>
+              <p className="text-sm leading-relaxed">{iteration.analysisNarrative}</p>
+            </div>
+            {iteration.strategyForNext && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Strategy for next round</p>
+                <p className="text-sm leading-relaxed text-primary">{iteration.strategyForNext}</p>
+              </div>
+            )}
+            {iteration.learnings.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Learnings</p>
+                <ul className="text-sm space-y-1">{iteration.learnings.map((l, i) => <li key={i} className="text-muted-foreground">\u2022 {l}</li>)}</ul>
+              </div>
+            )}
+            {iteration.topPerformingKeywords?.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {iteration.topPerformingKeywords.map((kw) => (
+                  <span key={kw} className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 text-xs font-medium">{kw}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Auto-play timer */}
+        {isLatest && campaignStatus === "awaiting_approval" && (
+          <AutoPlayTimer campaignId={campaignId} onStarted={onRefresh} />
+        )}
+      </TimelineStep>
+
+      {/* Modals */}
+      <ResultsModal results={results} open={showAllCreators} onClose={() => setShowAllCreators(false)} title="All Discovered Creators" />
+      <ResultsModal results={qualifiedResults} open={showQualified} onClose={() => setShowQualified(false)} title="Qualified Leads (Fit \u2265 60)" />
     </div>
   );
 }
+
+// ── Main Campaign Page ──
 
 export default function CampaignDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [roundResults, setRoundResults] = useState<Map<string, Result[]>>(new Map());
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [aborting, setAborting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Provider state
   const [provider, setProvider] = useState<LLMProvider>("openai");
   const [providerMenuOpen, setProviderMenuOpen] = useState(false);
   useEffect(() => {
@@ -267,25 +513,35 @@ export default function CampaignDetailPage() {
     if (saved && PROVIDERS.includes(saved)) setProvider(saved);
   }, []);
   const changeProvider = (p: LLMProvider) => {
-    setProvider(p);
-    localStorage.setItem("llm-provider", p);
-    setProviderMenuOpen(false);
+    setProvider(p); localStorage.setItem("llm-provider", p); setProviderMenuOpen(false);
   };
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/campaigns/${params.id}`);
-    if (res.ok) setCampaign(await res.json());
+    if (!res.ok) return;
+    const data = await res.json();
+    setCampaign(data);
+
+    // Fetch results for each KH set (lightweight — only fields needed for tables)
+    for (const set of data.khSets) {
+      if (set.status === "completed" || (set._count?.results ?? 0) > 0) {
+        const rRes = await fetch(`/api/campaigns/${params.id}/kh-sets/${set.id}`);
+        if (rRes.ok) {
+          const setData = await rRes.json();
+          setRoundResults((prev) => new Map(prev).set(set.id, setData.results || []));
+        }
+      }
+    }
   }, [params.id]);
 
   useEffect(() => { load(); }, [load]);
 
-  // Poll while discovering/iterating
+  // Poll while active
   useEffect(() => {
     if (!campaign) return;
-    const isActive = ["discovering", "iterating", "aborting", "profiling", "analyzing"].includes(campaign.status) ||
-      campaign.khSets.some((s) => s.status === "processing");
-    if (!isActive) return;
-    const interval = setInterval(load, 5000);
+    const active = !["draft", "completed", "aborted", "failed"].includes(campaign.status);
+    if (!active) return;
+    const interval = setInterval(load, 8000);
     return () => clearInterval(interval);
   }, [campaign, load]);
 
@@ -294,8 +550,7 @@ export default function CampaignDetailPage() {
     const fd = new FormData();
     fd.append("file", file);
     await fetch(`/api/campaigns/${params.id}/documents`, { method: "POST", body: fd });
-    await load();
-    setUploading(false);
+    await load(); setUploading(false);
   };
 
   const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -306,22 +561,17 @@ export default function CampaignDetailPage() {
   };
 
   const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
+    e.preventDefault(); setDragOver(false);
     for (const file of Array.from(e.dataTransfer.files)) await uploadFile(file);
   };
 
   const deleteDocument = async (documentId: string) => {
-    await fetch(`/api/campaigns/${params.id}/documents`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ documentId }),
-    });
+    await fetch(`/api/campaigns/${params.id}/documents`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ documentId }) });
     await load();
   };
 
   const deleteCampaign = async () => {
-    if (!window.confirm("Delete this campaign? This will also remove all documents, KH sets, and results.")) return;
+    if (!window.confirm("Delete this campaign?")) return;
     const res = await fetch(`/api/campaigns/${params.id}`, { method: "DELETE" });
     if (res.ok) router.push("/campaigns");
   };
@@ -329,168 +579,146 @@ export default function CampaignDetailPage() {
   const handleAbort = async () => {
     setAborting(true);
     await fetch(`/api/campaigns/${params.id}/abort`, { method: "POST" });
-    await load();
-    setAborting(false);
+    await load(); setAborting(false);
   };
 
   const handleGenerate = async () => {
     setGenerating(true);
-    const res = await fetch(`/api/campaigns/${params.id}/kh-sets`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        minKeywords: campaign?.targetKeywords ?? 50,
-        maxKeywords: campaign?.targetKeywords ?? 50,
-        minHashtags: campaign?.targetHashtags ?? 50,
-        maxHashtags: campaign?.targetHashtags ?? 50,
-        provider,
-      }),
+    await fetch(`/api/campaigns/${params.id}/kh-sets`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ minKeywords: campaign?.targetKeywords ?? 50, maxKeywords: campaign?.targetKeywords ?? 50, minHashtags: campaign?.targetHashtags ?? 50, maxHashtags: campaign?.targetHashtags ?? 50, provider }),
     });
-    if (res.ok) {
-      const set = await res.json();
-      router.push(`/campaigns/${params.id}/kh-sets/${set.id}`);
-    }
-    setGenerating(false);
+    await load(); setGenerating(false);
   };
 
   if (!campaign) {
-    return (
-      <div className="py-12 text-center">
-        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Loading campaign...</p>
-      </div>
-    );
+    return <div className="py-12 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-muted-foreground" /><p className="text-sm text-muted-foreground">Loading campaign...</p></div>;
   }
 
   const hasRuns = campaign.khSets.length > 0;
-  const isActive = ["discovering", "iterating", "aborting", "profiling", "analyzing"].includes(campaign.status) ||
-    campaign.khSets.some((s) => s.status === "processing");
+  const totalLeads = campaign.khSets.filter((s) => s.status === "completed").reduce((sum, s) => sum + (s.totalScraped || (s._count?.results ?? 0)), 0);
+  const progress = Math.min(100, Math.round((totalLeads / campaign.targetLeads) * 100));
+  const totalCost = (campaign.iterations || []).reduce((s, i) => s + (i.profilingCost ?? 0), 0);
+  const isActive = !["draft", "completed", "aborted", "failed"].includes(campaign.status);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <Link
-        href="/"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to campaigns
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+      <Link href="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <ArrowLeft className="h-4 w-4" /> Back to campaigns
       </Link>
 
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="scroll-m-20 text-4xl font-extrabold tracking-tight">{campaign.name}</h1>
-          <p className="text-xl text-muted-foreground mt-1">
-            {campaign.brandNiche} &middot; {campaign.marketingGoal}
-          </p>
+          <h1 className="scroll-m-20 text-3xl font-extrabold tracking-tight">{campaign.name}</h1>
+          <p className="text-lg text-muted-foreground mt-1">{campaign.brandNiche} &middot; {campaign.marketingGoal}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={statusBadgeVariant(campaign.status)} className="text-sm">
-            {campaign.status}
-          </Badge>
+          {isActive && (
+            <Button variant="destructive" size="sm" onClick={handleAbort} disabled={aborting}>
+              <StopCircle className="h-4 w-4 mr-1" /> Abort
+            </Button>
+          )}
           {!isActive && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={deleteCampaign}
-              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              title="Delete campaign"
-            >
+            <Button variant="ghost" size="icon" onClick={deleteCampaign} className="text-muted-foreground hover:text-destructive">
               <Trash2 className="h-4 w-4" />
             </Button>
           )}
         </div>
       </div>
 
-      {/* Show progress view when campaign has runs */}
+      {/* Progress bar (when runs exist) */}
       {hasRuns && (
-        <ProgressView campaign={campaign} onAbort={handleAbort} onRefresh={load} />
+        <Card>
+          <CardContent className="pt-5 pb-5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-2xl font-bold">
+                {totalLeads.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">/ {campaign.targetLeads.toLocaleString()} leads</span>
+              </p>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                {totalCost > 0 && <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />{totalCost.toFixed(2)}</span>}
+                <Badge variant={campaign.status === "completed" ? "default" : campaign.status === "failed" ? "destructive" : "secondary"}>
+                  {campaign.status === "awaiting_approval" ? "planning next round" : campaign.status}
+                </Badge>
+              </div>
+            </div>
+            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+              <div className={`h-full rounded-full transition-all duration-500 ${campaign.status === "completed" ? "bg-green-500" : "bg-primary"} ${isActive ? "animate-pulse" : ""}`} style={{ width: `${progress}%` }} />
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Draft state: show document management + generate button */}
+      {/* Timeline */}
+      {hasRuns && (
+        <div>
+          {campaign.khSets
+            .sort((a, b) => a.iterationNumber - b.iterationNumber)
+            .map((set, idx) => {
+              const iteration = campaign.iterations?.find(
+                (i) => i.khSetId === set.id
+              ) ?? null;
+
+              return (
+                <TimelineRound
+                  key={set.id}
+                  khSet={set}
+                  iteration={iteration}
+                  campaignId={campaign.id}
+                  campaignStatus={campaign.status}
+                  isLatest={idx === campaign.khSets.length - 1}
+                  results={roundResults.get(set.id) || []}
+                  onRefresh={load}
+                />
+              );
+            })}
+        </div>
+      )}
+
+      {/* Draft state: document upload + start discovery */}
       {campaign.status === "draft" && (
         <>
           <Separator />
 
-          {/* Documents */}
-          <div>
-            <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight mb-4 flex items-center gap-2">
-              <FileText className="h-7 w-7" />
-              Documents
-            </h2>
-
-            {campaign.documents.length > 0 && (
-              <div className="space-y-2 mb-4">
-                {campaign.documents.map((d) => (
-                  <div key={d.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
-                    {getFileIcon(d.filename)}
-                    <span className="text-sm font-medium flex-1">{d.filename}</span>
-                    <span className="text-sm text-muted-foreground">{new Date(d.createdAt).toLocaleDateString()}</span>
-                    <button
-                      onClick={() => deleteDocument(d.id)}
-                      className="ml-1 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all ${
-                dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50"
-              }`}
-            >
-              <input ref={fileInputRef} type="file" accept=".pdf,.md,.txt" multiple className="hidden" onChange={handleFileInput} disabled={uploading} />
-              {uploading ? (
-                <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="text-sm font-medium">Uploading...</p>
+          {campaign.documents.length > 0 && (
+            <div className="space-y-2">
+              {campaign.documents.map((d) => (
+                <div key={d.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  {getFileIcon(d.filename)}
+                  <span className="text-sm font-medium flex-1">{d.filename}</span>
+                  <span className="text-sm text-muted-foreground">{new Date(d.createdAt).toLocaleDateString()}</span>
+                  <button onClick={() => deleteDocument(d.id)} className="ml-1 p-1 rounded-md text-muted-foreground hover:text-destructive transition-colors">
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2">
-                  <Upload className="h-8 w-8 text-muted-foreground/50" />
-                  <p className="text-lg font-semibold">Drop files here or click to browse</p>
-                  <p className="text-sm text-muted-foreground">PDF, Markdown, and text files</p>
-                </div>
-              )}
+              ))}
             </div>
+          )}
+
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`relative border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all ${dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}`}
+          >
+            <input ref={fileInputRef} type="file" accept=".pdf,.md,.txt" multiple className="hidden" onChange={handleFileInput} disabled={uploading} />
+            {uploading ? <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" /> : (
+              <div className="flex flex-col items-center gap-1"><Upload className="h-6 w-6 text-muted-foreground/50" /><p className="text-sm font-medium">Drop files or click to browse</p></div>
+            )}
           </div>
 
-          {/* Quick Actions */}
           <Card>
-            <CardContent className="pt-6 space-y-3">
+            <CardContent className="pt-5 pb-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium flex items-center gap-2">
-                    <Target className="h-4 w-4" />
-                    Target: {campaign.targetLeads.toLocaleString()} leads
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {campaign.documents.length} document{campaign.documents.length !== 1 ? "s" : ""} uploaded
-                  </p>
+                  <p className="font-medium flex items-center gap-2"><Target className="h-4 w-4" /> Target: {campaign.targetLeads.toLocaleString()} leads</p>
+                  <p className="text-sm text-muted-foreground">{campaign.documents.length} document{campaign.documents.length !== 1 ? "s" : ""}</p>
                 </div>
                 <div className="flex gap-0">
                   <Button onClick={handleGenerate} disabled={generating || campaign.documents.length === 0} size="lg" className="rounded-r-none">
-                    {generating ? (
-                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating...</>
-                    ) : (
-                      <><Sparkles className="h-4 w-4 mr-2" />Start Discovery</>
-                    )}
+                    {generating ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating...</> : <><Sparkles className="h-4 w-4 mr-2" />Start Discovery</>}
                   </Button>
                   <div className="relative">
-                    <Button
-                      variant="default"
-                      size="lg"
-                      className="rounded-l-none border-l border-l-primary-foreground/20 px-3"
-                      onClick={() => setProviderMenuOpen(!providerMenuOpen)}
-                      disabled={generating}
-                    >
+                    <Button variant="default" size="lg" className="rounded-l-none border-l border-l-primary-foreground/20 px-3" onClick={() => setProviderMenuOpen(!providerMenuOpen)} disabled={generating}>
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                     {providerMenuOpen && (
@@ -498,13 +726,7 @@ export default function CampaignDetailPage() {
                         <div className="fixed inset-0 z-40" onClick={() => setProviderMenuOpen(false)} />
                         <div className="absolute right-0 top-full mt-1 z-50 w-44 rounded-md border bg-popover p-1 shadow-md">
                           {PROVIDERS.map((p) => (
-                            <button
-                              key={p}
-                              onClick={() => changeProvider(p)}
-                              className={`w-full text-left px-3 py-2 text-sm rounded-sm transition-colors ${
-                                p === provider ? "bg-accent text-accent-foreground font-medium" : "hover:bg-accent hover:text-accent-foreground"
-                              }`}
-                            >
+                            <button key={p} onClick={() => changeProvider(p)} className={`w-full text-left px-3 py-2 text-sm rounded-sm transition-colors ${p === provider ? "bg-accent font-medium" : "hover:bg-accent"}`}>
                               {PROVIDER_LABELS[p]}{p === provider && " \u2713"}
                             </button>
                           ))}
@@ -518,9 +740,6 @@ export default function CampaignDetailPage() {
           </Card>
         </>
       )}
-
-      {/* Bottom spacer */}
-      <div className="h-8" />
     </div>
   );
 }

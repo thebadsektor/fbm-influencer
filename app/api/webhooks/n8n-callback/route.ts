@@ -58,7 +58,9 @@ export async function POST(req: NextRequest) {
           creatorName: (rec.creatorName || rec.name) as string | undefined,
           creatorHandle: (rec.creatorHandle || rec.handle || rec.username) as string | undefined,
           profileUrl: (rec.profileUrl || rec.url) as string | undefined,
-          email: rec.email as string | undefined,
+          email: rec.email
+            ? String(rec.email).replace(/^[^a-zA-Z0-9]+/, "").trim() || null
+            : undefined,
           emailSource: (rec.emailSource || rec.source) as string | undefined,
           emailType: rec.emailType as string | undefined,
           confidence: rec.confidence as string | undefined,
