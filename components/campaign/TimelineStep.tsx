@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronDown, RotateCcw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,11 @@ export function TimelineStep({
     defaultExpanded ?? (status === "active" || status === "failed")
   );
   const [retrying, setRetrying] = useState(false);
+
+  // Auto-expand when step becomes active
+  useEffect(() => {
+    if (status === "active") setExpanded(true);
+  }, [status]);
 
   const handleRetry = async () => {
     if (!onRetry) return;
@@ -78,9 +83,9 @@ export function TimelineStep({
           <span className={cn("font-medium text-sm", status === "active" && "text-blue-400")}>
             {title}
           </span>
-          {status === "completed" && <span className="text-green-500 text-xs font-medium">\u2713</span>}
+          {status === "completed" && <span className="text-green-500 text-xs font-medium">✓</span>}
           {status === "active" && <Loader2 className="h-3 w-3 animate-spin text-blue-400" />}
-          {status === "failed" && <span className="text-red-500 text-xs font-medium">\u2717</span>}
+          {status === "failed" && <span className="text-red-500 text-xs font-medium">✗</span>}
           {duration && <span className="text-xs text-muted-foreground">({duration})</span>}
           {cost && <span className="text-xs text-muted-foreground">${cost}</span>}
 

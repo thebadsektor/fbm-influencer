@@ -145,6 +145,7 @@ Analyze this round and respond with JSON only:
 {
   "topPerformingKeywords": [<keywords from this round that produced high-fit creators, max 10>],
   "lowPerformingKeywords": [<keywords that produced mostly low-fit or uncollaboratable creators, max 10>],
+  "recommendedHashtags": [<10-15 NEW hashtags to try in the next round, based on what themes/topics resonated with high-fit creators>],
   "exclusionPatterns": {
     "themePatterns": [<content themes to AVOID in future searches>],
     "followerCeiling": <number or null — if mega-celebrities are polluting, suggest a max follower count>,

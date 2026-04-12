@@ -42,6 +42,8 @@ import {
   Users,
   Target,
   StopCircle,
+  Pause,
+  Play,
   CheckCircle2,
   AlertCircle,
   Search,
@@ -116,6 +118,7 @@ interface LogEntry {
   stage: string;
   message: string;
   timestamp: string;
+  data?: Record<string, unknown>;
 }
 
 const PROVIDERS: LLMProvider[] = ["openai", "anthropic", "gemini"];
@@ -264,6 +267,7 @@ function TimelineRound({
   isLatest,
   results,
   onRefresh,
+  autoRun,
 }: {
   khSet: KHSetData;
   iteration: IterationData | null;
@@ -272,6 +276,7 @@ function TimelineRound({
   isLatest: boolean;
   results: Result[];
   onRefresh: () => void;
+  autoRun: boolean;
 }) {
   const [showAllCreators, setShowAllCreators] = useState(false);
   const [showQualified, setShowQualified] = useState(false);
@@ -302,13 +307,18 @@ function TimelineRound({
   };
 
   const getOptimizationStatus = (): StepStatus => {
-    if (iteration?.analysisNarrative) return "completed";
+    if (isLatest && campaignStatus === "awaiting_approval") return "active";
     if (isLatest && campaignStatus === "analyzing") return "active";
-    if (isLatest && campaignStatus === "awaiting_approval") return "completed";
+    if (iteration?.analysisNarrative) return "completed";
     return "pending";
   };
 
   const logs = useLiveLog(isActive ? khSet.id : null, isActive);
+
+  // Parse profiling progress from live log events
+  const profilingProgressEvent = logs.filter((l) => l.stage === "profiling_progress").slice(-1)[0];
+  const profilingProgressData = profilingProgressEvent?.data as { current?: number; total?: number } | undefined;
+  const profilingSummaryEvent = logs.filter((l) => l.stage === "profiling_summary").slice(-1)[0];
 
   const handleRetryProfiling = async () => {
     setRetrying(true);
@@ -401,7 +411,15 @@ function TimelineRound({
         title="AI Profiling"
         status={getProfilingStatus()}
         icon={<Brain className="h-4 w-4" />}
-        summary={iteration ? `${iteration.profiledCount} profiled, ${iteration.skippedCount} skipped. Avg fit: ${Math.round(iteration.avgFitScore ?? 0)}/100` : undefined}
+        summary={
+          iteration
+            ? `${iteration.profiledCount} profiled, ${iteration.skippedCount} skipped. Avg fit: ${Math.round(iteration.avgFitScore ?? 0)}/100`
+            : profilingProgressData
+            ? `Profiling ${profilingProgressData.current}/${profilingProgressData.total}...`
+            : profilingSummaryEvent
+            ? profilingSummaryEvent.message
+            : undefined
+        }
         duration={formatDuration(iteration?.profilingDuration)}
         cost={iteration?.profilingCost ? iteration.profilingCost.toFixed(2) : undefined}
         defaultExpanded={isLatest && getProfilingStatus() === "active"}
@@ -467,7 +485,7 @@ function TimelineRound({
             {iteration.learnings.length > 0 && (
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-1">Learnings</p>
-                <ul className="text-sm space-y-1">{iteration.learnings.map((l, i) => <li key={i} className="text-muted-foreground">\u2022 {l}</li>)}</ul>
+                <ul className="text-sm space-y-1">{iteration.learnings.map((l, i) => <li key={i} className="text-muted-foreground">• {l}</li>)}</ul>
               </div>
             )}
             {iteration.topPerformingKeywords?.length > 0 && (
@@ -480,15 +498,24 @@ function TimelineRound({
           </div>
         )}
 
-        {/* Auto-play timer */}
-        {isLatest && campaignStatus === "awaiting_approval" && (
+        {/* Auto-play timer — only when autoRun is on */}
+        {isLatest && campaignStatus === "awaiting_approval" && autoRun && (
           <AutoPlayTimer campaignId={campaignId} onStarted={onRefresh} />
+        )}
+        {isLatest && campaignStatus === "awaiting_approval" && !autoRun && (
+          <div className="p-3 rounded-lg bg-muted/50 border text-sm text-muted-foreground">
+            Auto-run is off. Turn it on to continue automatically, or click Start Now.
+            <Button size="sm" className="ml-3" onClick={async () => {
+              await fetch(`/api/campaigns/${campaignId}/continue`, { method: "POST" });
+              onRefresh();
+            }}>Start Next Round</Button>
+          </div>
         )}
       </TimelineStep>
 
       {/* Modals */}
       <ResultsModal results={results} open={showAllCreators} onClose={() => setShowAllCreators(false)} title="All Discovered Creators" />
-      <ResultsModal results={qualifiedResults} open={showQualified} onClose={() => setShowQualified(false)} title="Qualified Leads (Fit \u2265 60)" />
+      <ResultsModal results={qualifiedResults} open={showQualified} onClose={() => setShowQualified(false)} title="Qualified Leads (Fit ≥ 60)" />
     </div>
   );
 }
@@ -503,6 +530,7 @@ export default function CampaignDetailPage() {
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [aborting, setAborting] = useState(false);
+  const [autoRun, setAutoRun] = useState(true);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -596,58 +624,91 @@ export default function CampaignDetailPage() {
   }
 
   const hasRuns = campaign.khSets.length > 0;
-  const totalLeads = campaign.khSets.filter((s) => s.status === "completed").reduce((sum, s) => sum + (s.totalScraped || (s._count?.results ?? 0)), 0);
+  const totalLeads = campaign.khSets.filter((s) => s.status === "completed").reduce((sum, s) => sum + (s._count?.results ?? s.totalScraped ?? 0), 0);
   const progress = Math.min(100, Math.round((totalLeads / campaign.targetLeads) * 100));
   const totalCost = (campaign.iterations || []).reduce((s, i) => s + (i.profilingCost ?? 0), 0);
   const isActive = !["draft", "completed", "aborted", "failed"].includes(campaign.status);
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-12">
-      <Link href="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to campaigns
-      </Link>
+  // Track scroll for sticky header shrink
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 80);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="scroll-m-20 text-3xl font-extrabold tracking-tight">{campaign.name}</h1>
-          <p className="text-lg text-muted-foreground mt-1">{campaign.brandNiche} &middot; {campaign.marketingGoal}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {isActive && (
-            <Button variant="destructive" size="sm" onClick={handleAbort} disabled={aborting}>
-              <StopCircle className="h-4 w-4 mr-1" /> Abort
-            </Button>
+  return (
+    <div className="max-w-4xl mx-auto pb-12">
+      {/* Sticky header with blur */}
+      <div className="sticky top-0 z-30 -mx-4 px-4 backdrop-blur-xl bg-background/80 border-b border-border/50 transition-all">
+        <div className="max-w-4xl mx-auto">
+          {/* Back link — hide when scrolled */}
+          {!scrolled && (
+            <div className="pt-4 pb-2">
+              <Link href="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <ArrowLeft className="h-4 w-4" /> Back to campaigns
+              </Link>
+            </div>
           )}
-          {!isActive && (
-            <Button variant="ghost" size="icon" onClick={deleteCampaign} className="text-muted-foreground hover:text-destructive">
-              <Trash2 className="h-4 w-4" />
-            </Button>
+
+          {/* Title + toggle row */}
+          <div className={`flex items-center justify-between transition-all ${scrolled ? "py-3" : "pt-2 pb-3"}`}>
+            <div className="min-w-0 flex-1">
+              <h1 className={`font-extrabold tracking-tight truncate transition-all ${scrolled ? "text-lg" : "text-3xl"}`}>
+                {campaign.name}
+              </h1>
+              {!scrolled && (
+                <p className="text-lg text-muted-foreground mt-1">{campaign.brandNiche} &middot; {campaign.marketingGoal}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+              {hasRuns && !["completed", "failed", "aborted"].includes(campaign.status) && (
+                <button
+                  onClick={() => setAutoRun(!autoRun)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                    autoRun
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted text-muted-foreground border-border"
+                  }`}
+                >
+                  {autoRun ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
+                  {scrolled ? "" : `Auto-run ${autoRun ? "on" : "off"}`}
+                </button>
+              )}
+              {!isActive && !hasRuns && (
+                <Button variant="ghost" size="icon" onClick={deleteCampaign} className="text-muted-foreground hover:text-destructive">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Progress bar — always visible when runs exist */}
+          {hasRuns && (
+            <div className={`transition-all ${scrolled ? "pb-3" : "pb-4"}`}>
+              <div className="flex items-center justify-between mb-1.5">
+                <p className={`font-bold transition-all ${scrolled ? "text-sm" : "text-xl"}`}>
+                  {totalLeads.toLocaleString()} <span className="text-xs font-normal text-muted-foreground">/ {campaign.targetLeads.toLocaleString()} leads</span>
+                </p>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  {totalCost > 0 && <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />{totalCost.toFixed(2)}</span>}
+                  <Badge variant={campaign.status === "completed" ? "default" : campaign.status === "failed" ? "destructive" : "secondary"} className="text-xs">
+                    {campaign.status === "awaiting_approval" ? "planning next round" : campaign.status}
+                  </Badge>
+                </div>
+              </div>
+              <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                <div className={`h-full rounded-full transition-all duration-500 ${campaign.status === "completed" ? "bg-green-500" : "bg-primary"} ${isActive ? "animate-pulse" : ""}`} style={{ width: `${progress}%` }} />
+              </div>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Progress bar (when runs exist) */}
-      {hasRuns && (
-        <Card>
-          <CardContent className="pt-5 pb-5">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-2xl font-bold">
-                {totalLeads.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">/ {campaign.targetLeads.toLocaleString()} leads</span>
-              </p>
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                {totalCost > 0 && <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />{totalCost.toFixed(2)}</span>}
-                <Badge variant={campaign.status === "completed" ? "default" : campaign.status === "failed" ? "destructive" : "secondary"}>
-                  {campaign.status === "awaiting_approval" ? "planning next round" : campaign.status}
-                </Badge>
-              </div>
-            </div>
-            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-              <div className={`h-full rounded-full transition-all duration-500 ${campaign.status === "completed" ? "bg-green-500" : "bg-primary"} ${isActive ? "animate-pulse" : ""}`} style={{ width: `${progress}%` }} />
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Spacer for sticky header */}
+      <div className="h-2" />
+
+      <div className="space-y-6 px-0">
 
       {/* Timeline */}
       {hasRuns && (
@@ -669,6 +730,7 @@ export default function CampaignDetailPage() {
                   isLatest={idx === campaign.khSets.length - 1}
                   results={roundResults.get(set.id) || []}
                   onRefresh={load}
+                  autoRun={autoRun}
                 />
               );
             })}
@@ -727,7 +789,7 @@ export default function CampaignDetailPage() {
                         <div className="absolute right-0 top-full mt-1 z-50 w-44 rounded-md border bg-popover p-1 shadow-md">
                           {PROVIDERS.map((p) => (
                             <button key={p} onClick={() => changeProvider(p)} className={`w-full text-left px-3 py-2 text-sm rounded-sm transition-colors ${p === provider ? "bg-accent font-medium" : "hover:bg-accent"}`}>
-                              {PROVIDER_LABELS[p]}{p === provider && " \u2713"}
+                              {PROVIDER_LABELS[p]}{p === provider && " ✓"}
                             </button>
                           ))}
                         </div>
@@ -740,6 +802,7 @@ export default function CampaignDetailPage() {
           </Card>
         </>
       )}
+      </div>{/* close space-y-6 wrapper */}
     </div>
   );
 }

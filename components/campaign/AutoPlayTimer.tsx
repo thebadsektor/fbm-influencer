@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Play, Pause, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 interface AutoPlayTimerProps {
   campaignId: string;
@@ -12,7 +11,6 @@ interface AutoPlayTimerProps {
 
 export function AutoPlayTimer({ campaignId, seconds = 30, onStarted }: AutoPlayTimerProps) {
   const [remaining, setRemaining] = useState(seconds);
-  const [paused, setPaused] = useState(false);
   const [starting, setStarting] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -27,7 +25,7 @@ export function AutoPlayTimer({ campaignId, seconds = 30, onStarted }: AutoPlayT
   };
 
   useEffect(() => {
-    if (paused || starting || remaining <= 0) return;
+    if (starting || remaining <= 0) return;
 
     intervalRef.current = setInterval(() => {
       setRemaining((r) => {
@@ -43,11 +41,11 @@ export function AutoPlayTimer({ campaignId, seconds = 30, onStarted }: AutoPlayT
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paused, starting]);
+  }, [starting]);
 
   if (starting) {
     return (
-      <div className="flex items-center gap-2 text-sm text-blue-400">
+      <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border text-sm text-blue-400">
         <Loader2 className="h-4 w-4 animate-spin" />
         Starting next round...
       </div>
@@ -57,8 +55,8 @@ export function AutoPlayTimer({ campaignId, seconds = 30, onStarted }: AutoPlayT
   return (
     <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
       {/* Countdown circle */}
-      <div className="relative h-12 w-12 flex-shrink-0">
-        <svg className="h-12 w-12 -rotate-90" viewBox="0 0 48 48">
+      <div className="relative h-10 w-10 flex-shrink-0">
+        <svg className="h-10 w-10 -rotate-90" viewBox="0 0 48 48">
           <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" className="text-muted" strokeWidth="3" />
           <circle
             cx="24" cy="24" r="20" fill="none" stroke="currentColor"
@@ -74,32 +72,9 @@ export function AutoPlayTimer({ campaignId, seconds = 30, onStarted }: AutoPlayT
         </span>
       </div>
 
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium">
-          {paused ? "Auto-start paused" : `Auto-starting next round in ${remaining}s...`}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {paused ? "Click resume or start now to continue" : "Pause to review the plan before continuing"}
-        </p>
-      </div>
-
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setPaused(!paused)}
-        >
-          {paused ? <Play className="h-3 w-3 mr-1" /> : <Pause className="h-3 w-3 mr-1" />}
-          {paused ? "Resume" : "Pause"}
-        </Button>
-        <Button
-          size="sm"
-          onClick={triggerContinue}
-          disabled={starting}
-        >
-          Start Now
-        </Button>
-      </div>
+      <p className="text-sm text-muted-foreground flex-1">
+        Starting next discovery round in {remaining}s...
+      </p>
     </div>
   );
 }

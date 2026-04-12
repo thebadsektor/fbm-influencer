@@ -132,10 +132,10 @@ ${docContext ? `Context Documents:\n${docContext}` : ""}
 ${iterationContext}
 ${strategySection}
 
-Generate ${minKeywords}-${maxKeywords} search keywords and ${minHashtags}-${maxHashtags} hashtags (with # prefix) that would be effective for finding relevant influencers on TikTok and YouTube.
+CRITICAL: Generate EXACTLY ${maxKeywords} search keywords and EXACTLY ${maxHashtags} hashtags (with # prefix). Do NOT generate fewer — the full count is required for the discovery system to work properly. Each keyword should be 1-4 words. Each hashtag must start with #.
 
 Return ONLY valid JSON in this exact format, no other text:
-{"keywords": ["keyword1", "keyword2"], "hashtags": ["#hashtag1", "#hashtag2"]}`;
+{"keywords": ["keyword1", "keyword2", ...${maxKeywords} total], "hashtags": ["#hashtag1", "#hashtag2", ...${maxHashtags} total]}`;
 
   const apiKey = userId ? await resolveApiKey(userId, provider) : undefined;
   const text = await llmGenerate(provider, prompt, 2048, apiKey);
