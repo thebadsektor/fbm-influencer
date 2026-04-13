@@ -4,6 +4,7 @@ import { generateKHSet, type StrategyContext } from "@/lib/kh-generator";
 import { profileBatch, type CampaignContext } from "@/lib/affinity-profiler";
 import { analyzeIteration, type ExclusionPatterns } from "@/lib/iteration-analyzer";
 import { publishDiscoveryEvent } from "@/lib/redis";
+import { runEnrichmentStep } from "@/lib/enrichment-runner";
 import type { LLMProvider } from "@/lib/llm";
 
 const MIN_NEW_LEADS_PER_RUN = 10;
@@ -185,7 +186,26 @@ export async function triggerNextIteration(
   await saveIterationMemory(campaignId, completedKhSetId, completedIterations,
     currentKhSet, profilingResult, analysis);
 
-  // ── PHASE 4: Pause for approval (30s auto-continue on client) ──
+  // ── PHASE 4: Email Enrichment (auto, if enough qualified leads) ──
+  let enrichmentResults: Record<string, unknown> = {};
+  try {
+    enrichmentResults = await runEnrichmentStep(campaignId, completedKhSetId);
+  } catch (err) {
+    console.error("[discovery-loop] Enrichment failed:", err);
+    await publishDiscoveryEvent(completedKhSetId, "warning",
+      `Enrichment step failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  // Update iteration with enrichment results
+  const iterationRecord = await prisma.campaignIteration.findFirst({ where: { khSetId: completedKhSetId } });
+  if (iterationRecord) {
+    await prisma.campaignIteration.update({
+      where: { id: iterationRecord.id },
+      data: { enrichmentResults: JSON.parse(JSON.stringify(enrichmentResults)) },
+    });
+  }
+
+  // ── PHASE 5: Pause for approval (30s auto-continue on client) ──
   await prisma.campaign.update({ where: { id: campaignId }, data: { status: "awaiting_approval" } });
 
   const nextIteration = completedIterations + 1;

@@ -423,6 +423,7 @@ model CampaignIteration {
   profilingCost           Float?
   profilingDuration       Int?
   discoveryDuration       Int?
+  enrichmentResults       Json?
   createdAt               DateTime @default(now())
 
   @@unique([campaignId, iterationNumber])

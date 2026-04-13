@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/table";
 import { TimelineStep, type StepStatus } from "@/components/campaign/TimelineStep";
 import { AutoPlayTimer } from "@/components/campaign/AutoPlayTimer";
-import { EnrichmentCard } from "@/components/campaign/EnrichmentCard";
+// EnrichmentCard removed — enrichment is now a timeline step
 import type { LLMProvider } from "@/lib/llm";
 import { PROVIDER_LABELS } from "@/lib/llm";
 import { IDLE_MESSAGES } from "@/lib/idle-messages";
@@ -102,6 +102,7 @@ interface IterationData {
   learnings: string[];
   topPerformingKeywords: string[];
   lowPerformingKeywords: string[];
+  enrichmentResults: Record<string, { workflowId: string; sent: number; deferred: boolean; reason?: string }> | null;
 }
 
 interface KHSetData {
@@ -345,7 +346,7 @@ function TimelineRound({
   const [retrying, setRetrying] = useState(false);
 
   const resultCount = khSet.totalScraped || khSet._count?.results || 0;
-  const isActive = khSet.status === "processing" || (isLatest && ["profiling", "analyzing", "awaiting_approval", "iterating"].includes(campaignStatus));
+  const isActive = khSet.status === "processing" || (isLatest && ["profiling", "analyzing", "enriching", "awaiting_approval", "iterating"].includes(campaignStatus));
 
   // Determine step statuses
   const getDiscoveryStatus = (): StepStatus => {
@@ -372,11 +373,21 @@ function TimelineRound({
     return "pending";
   };
 
+  const getEnrichmentStatus = (): StepStatus => {
+    if (getProfilingStatus() !== "completed") return "pending";
+    const er = iteration?.enrichmentResults;
+    if (er && Object.keys(er).length > 0) return "completed"; // ran or deferred
+    if (isLatest && campaignStatus === "enriching") return "active";
+    // If campaign moved past enriching, enrichment completed (or was skipped)
+    if (isLatest && ["awaiting_approval", "iterating"].includes(campaignStatus)) return "completed";
+    return "pending";
+  };
+
   const getOptimizationStatus = (): StepStatus => {
-    const profStatus = getProfilingStatus();
-    if (profStatus === "pending" || profStatus === "active") return "pending";
+    const enrichStatus = getEnrichmentStatus();
+    if (enrichStatus === "pending" || enrichStatus === "active") return "pending";
     if (isLatest && campaignStatus === "awaiting_approval") return "active";
-    if (isLatest && campaignStatus === "analyzing") return "active";
+    if (isLatest && campaignStatus === "analyzing") return "pending"; // analysis before enrichment
     if (iteration?.analysisNarrative) return "completed";
     return "pending";
   };
@@ -586,7 +597,7 @@ function TimelineRound({
 
         {/* Manual trigger — only when discovery done, profiling hasn't run, campaign not past profiling */}
         {!iteration && isLatest && khSet.status === "completed"
-          && !["profiling", "analyzing", "awaiting_approval", "iterating"].includes(campaignStatus)
+          && !["profiling", "analyzing", "enriching", "awaiting_approval", "iterating"].includes(campaignStatus)
           && !retrying && (
           <Button variant="outline" size="sm" onClick={handleRetryProfiling}>
             <RotateCcw className="h-3 w-3 mr-1" /> Run AI Profiling
@@ -594,7 +605,53 @@ function TimelineRound({
         )}
       </TimelineStep>
 
-      {/* Step 4: Optimization Plan */}
+      {/* Step 4: Email Enrichment */}
+      <TimelineStep
+        title="Email Enrichment"
+        status={getEnrichmentStatus()}
+        icon={<Mail className="h-4 w-4" />}
+        summary={(() => {
+          const er = iteration?.enrichmentResults;
+          if (!er) return undefined;
+          const entries = Object.values(er);
+          const deferred = entries.filter((e) => e.deferred);
+          const sent = entries.filter((e) => !e.deferred);
+          if (sent.length > 0) {
+            const totalSent = sent.reduce((s, e) => s + e.sent, 0);
+            return `${totalSent} channels enriched`;
+          }
+          if (deferred.length > 0) return deferred[0].reason || "Deferred to next round";
+          return undefined;
+        })()}
+        defaultExpanded={isLatest && getEnrichmentStatus() === "active"}
+      >
+        {/* Enrichment results */}
+        {iteration?.enrichmentResults && (() => {
+          const er = iteration.enrichmentResults;
+          const entries = Object.values(er);
+          return (
+            <div className="space-y-2">
+              {entries.map((e) => (
+                <div key={e.workflowId} className="p-2 rounded-lg bg-muted/50 text-sm">
+                  {e.deferred ? (
+                    <p className="text-muted-foreground">{e.reason}</p>
+                  ) : (
+                    <p className="text-green-500">{e.sent} channels sent for enrichment</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+        {/* Active enrichment */}
+        {getEnrichmentStatus() === "active" && !iteration?.enrichmentResults && (
+          <div className="p-3 bg-black/90 rounded-lg font-mono text-xs text-purple-400">
+            Enrichment in progress — checking qualified leads against available workflows...
+          </div>
+        )}
+      </TimelineStep>
+
+      {/* Step 5: Optimization Plan */}
       <TimelineStep
         title="Optimization Plan"
         status={getOptimizationStatus()}
@@ -996,10 +1053,6 @@ export default function CampaignDetailPage() {
             </CardContent>
           </Card>
         </>
-      )}
-      {/* Email Enrichment — always visible when results exist */}
-      {hasRuns && totalLeads > 0 && (
-        <EnrichmentCard campaignId={campaign.id} />
       )}
       </div>{/* close space-y-6 wrapper */}
     </div>

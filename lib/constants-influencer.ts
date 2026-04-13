@@ -47,6 +47,25 @@ export const KH_STATUSES = {
   FAILED: "failed",
 } as const;
 
+/**
+ * Enrichment workflows that run automatically after AI Profiling.
+ * Add new workflows here to extend the enrichment pipeline.
+ */
+export const ENRICHMENT_WORKFLOWS = [
+  {
+    id: "youtube-email-scraper",
+    label: "YouTube Email",
+    platform: "YOUTUBE",
+    minBatch: 25,
+    webhookPath: "youtube-email-enrichment",
+    costPerResult: 0.12,
+    platformIdPrefix: "UC", // YouTube channel IDs start with UC
+  },
+  // Future workflows:
+  // { id: "tiktok-email-scraper", label: "TikTok Email", platform: "TIKTOK", minBatch: 25, webhookPath: "tiktok-email-enrichment", costPerResult: 0.08, platformIdPrefix: "" },
+  // { id: "linkinbio-crawler", label: "Link-in-Bio", platform: "ALL", minBatch: 10, webhookPath: "linkinbio-crawler", costPerResult: 0, platformIdPrefix: "" },
+] as const;
+
 export const CAMPAIGN_STATUSES = {
   DRAFT: "draft",
   SCOUTING: "scouting",

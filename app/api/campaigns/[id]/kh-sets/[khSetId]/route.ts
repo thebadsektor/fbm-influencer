@@ -49,6 +49,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       strategyForNext: iteration.strategyForNext,
       learnings: iteration.learnings,
       topPerformingKeywords: iteration.topPerformingKeywords,
+      enrichmentResults: iteration.enrichmentResults,
     } : null,
   });
 }
