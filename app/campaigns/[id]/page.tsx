@@ -376,9 +376,10 @@ function TimelineRound({
   const getEnrichmentStatus = (): StepStatus => {
     if (getProfilingStatus() !== "completed") return "pending";
     const er = iteration?.enrichmentResults;
-    if (er && Object.keys(er).length > 0) return "completed"; // ran or deferred
+    if (er && Object.keys(er).length > 0) return "completed";
+    // Past rounds: if iteration exists and has analysis, enrichment step passed (even if no enrichmentResults field)
+    if (!isLatest && iteration?.analysisNarrative) return "completed";
     if (isLatest && campaignStatus === "enriching") return "active";
-    // If campaign moved past enriching, enrichment completed (or was skipped)
     if (isLatest && ["awaiting_approval", "iterating"].includes(campaignStatus)) return "completed";
     return "pending";
   };
@@ -386,8 +387,10 @@ function TimelineRound({
   const getOptimizationStatus = (): StepStatus => {
     const enrichStatus = getEnrichmentStatus();
     if (enrichStatus === "pending" || enrichStatus === "active") return "pending";
+    // Past rounds: if iteration has analysis, it's completed
+    if (!isLatest && iteration?.analysisNarrative) return "completed";
     if (isLatest && campaignStatus === "awaiting_approval") return "active";
-    if (isLatest && campaignStatus === "analyzing") return "pending"; // analysis before enrichment
+    if (isLatest && campaignStatus === "analyzing") return "pending";
     if (iteration?.analysisNarrative) return "completed";
     return "pending";
   };
