@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/table";
 import { TimelineStep, type StepStatus } from "@/components/campaign/TimelineStep";
 import { AutoPlayTimer } from "@/components/campaign/AutoPlayTimer";
-// EnrichmentCard removed — enrichment is now a timeline step
+import { EnrichmentSheet } from "@/components/campaign/EnrichmentSheet";
 import type { LLMProvider } from "@/lib/llm";
 import { PROVIDER_LABELS } from "@/lib/llm";
 import { IDLE_MESSAGES } from "@/lib/idle-messages";
@@ -760,6 +760,7 @@ export default function CampaignDetailPage() {
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState("");
   const [emailCount, setEmailCount] = useState<{ total: number; withEmail: number } | null>(null);
+  const [enrichmentSheetOpen, setEnrichmentSheetOpen] = useState(false);
   const [roundResults, setRoundResults] = useState<Map<string, Result[]>>(new Map());
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -965,10 +966,13 @@ export default function CampaignDetailPage() {
                 </p>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   {emailCount && emailCount.total > 0 && (
-                    <span className="flex items-center gap-1">
+                    <button
+                      onClick={() => setEnrichmentSheetOpen(true)}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
+                    >
                       <Mail className="h-3 w-3" />
                       {emailCount.withEmail} emails ({Math.round((emailCount.withEmail / emailCount.total) * 100)}%)
-                    </span>
+                    </button>
                   )}
                   {totalCost > 0 && <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />{totalCost.toFixed(2)}</span>}
                   <Badge variant={campaign.status === "completed" ? "default" : campaign.status === "failed" ? "destructive" : "secondary"} className="text-xs">
@@ -1082,6 +1086,13 @@ export default function CampaignDetailPage() {
         </>
       )}
       </div>{/* close space-y-6 wrapper */}
+
+      {/* Enrichment Sheet — opens from email stat click */}
+      <EnrichmentSheet
+        campaignId={campaign.id}
+        open={enrichmentSheetOpen}
+        onOpenChange={setEnrichmentSheetOpen}
+      />
     </div>
   );
 }

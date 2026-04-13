@@ -1,10 +1,11 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequiredUser } from "@/lib/auth-helpers";
+import { ENRICHMENT_WORKFLOWS } from "@/lib/constants-influencer";
 
 /**
- * Get enrichment stats for a campaign: email counts by platform,
- * active enrichment runs, and recent run history.
+ * Get enrichment stats for a campaign: email counts, workflow breakdown,
+ * active runs, and cost tracking.
  */
 export async function GET(
   _req: NextRequest,
@@ -19,7 +20,6 @@ export async function GET(
   });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Get all KH set IDs for this campaign
   const khSets = await prisma.kHSet.findMany({
     where: { campaignId: id },
     select: { id: true },
@@ -29,9 +29,9 @@ export async function GET(
   if (khSetIds.length === 0) {
     return NextResponse.json({
       emailStats: { total: 0, withEmail: 0, percentage: 0, byPlatform: {} },
-      activeRuns: [],
-      recentRuns: [],
+      workflowBreakdown: [],
       totalEnrichmentCost: 0,
+      enrichmentBudget: null,
     });
   }
 
@@ -59,58 +59,67 @@ export async function GET(
       : 0;
   }
 
-  // Active enrichment runs
-  const activeRuns = await prisma.enrichmentRun.groupBy({
-    by: ["workflow"],
-    where: {
-      resultId: { in: results.map(() => "").length > 0 ? undefined : undefined },
-      status: { in: ["pending", "running"] },
-      result: { khSetId: { in: khSetIds } },
-    },
-    _count: true,
-  }).catch(() => []);
-
-  // Simpler active runs query
-  const activeRunDetails = await prisma.enrichmentRun.findMany({
-    where: {
-      status: { in: ["pending", "running"] },
-      result: { khSetId: { in: khSetIds } },
-    },
-    select: { workflow: true, status: true, startedAt: true },
-  });
-
-  const activeByWorkflow: Record<string, { total: number; running: number; pending: number; startedAt: string }> = {};
-  for (const run of activeRunDetails) {
-    if (!activeByWorkflow[run.workflow]) {
-      activeByWorkflow[run.workflow] = { total: 0, running: 0, pending: 0, startedAt: run.startedAt.toISOString() };
-    }
-    activeByWorkflow[run.workflow].total++;
-    if (run.status === "running") activeByWorkflow[run.workflow].running++;
-    if (run.status === "pending") activeByWorkflow[run.workflow].pending++;
-  }
-
-  // Recent completed runs (last 10)
-  const recentRuns = await prisma.enrichmentRun.findMany({
-    where: {
-      status: "completed",
-      result: { khSetId: { in: khSetIds } },
-    },
+  // Per-workflow breakdown with all status counts
+  const allRuns = await prisma.enrichmentRun.findMany({
+    where: { result: { khSetId: { in: khSetIds } } },
     select: {
       workflow: true,
+      status: true,
       cost: true,
-      completedAt: true,
       output: true,
     },
-    orderBy: { completedAt: "desc" },
-    take: 50,
   });
 
-  // Aggregate recent runs by date + workflow
-  const totalEnrichmentCost = recentRuns.reduce((s, r) => s + (r.cost ?? 0), 0);
-  const emailsFound = recentRuns.filter((r) => {
-    const output = r.output as Record<string, unknown> | null;
-    return output?.email;
-  }).length;
+  const workflowMap = new Map<string, {
+    workflow: string;
+    label: string;
+    completed: number;
+    running: number;
+    pending: number;
+    failed: number;
+    emailsFound: number;
+    cost: number;
+  }>();
+
+  // Initialize from config
+  for (const wf of ENRICHMENT_WORKFLOWS) {
+    workflowMap.set(wf.id, {
+      workflow: wf.id,
+      label: wf.label,
+      completed: 0,
+      running: 0,
+      pending: 0,
+      failed: 0,
+      emailsFound: 0,
+      cost: 0,
+    });
+  }
+
+  for (const run of allRuns) {
+    let entry = workflowMap.get(run.workflow);
+    if (!entry) {
+      entry = { workflow: run.workflow, label: run.workflow, completed: 0, running: 0, pending: 0, failed: 0, emailsFound: 0, cost: 0 };
+      workflowMap.set(run.workflow, entry);
+    }
+
+    if (run.status === "completed") {
+      entry.completed++;
+      // Check if this run found an email
+      const output = run.output as Record<string, unknown> | null;
+      if (output?.email) entry.emailsFound++;
+    } else if (run.status === "running") {
+      entry.running++;
+    } else if (run.status === "pending") {
+      entry.pending++;
+    } else if (run.status === "failed") {
+      entry.failed++;
+    }
+    entry.cost += run.cost ?? 0;
+  }
+
+  const workflowBreakdown = [...workflowMap.values()];
+  const totalEnrichmentCost = workflowBreakdown.reduce((s, w) => s + w.cost, 0);
+  const totalActive = workflowBreakdown.reduce((s, w) => s + w.running + w.pending, 0);
 
   return NextResponse.json({
     emailStats: {
@@ -119,15 +128,8 @@ export async function GET(
       percentage: results.length > 0 ? Math.round((totalWithEmail / results.length) * 1000) / 10 : 0,
       byPlatform,
     },
-    activeRuns: Object.entries(activeByWorkflow).map(([workflow, data]) => ({
-      workflow,
-      ...data,
-    })),
-    recentRuns: {
-      count: recentRuns.length,
-      emailsFound,
-      totalCost: totalEnrichmentCost,
-    },
+    workflowBreakdown,
+    totalActive,
     totalEnrichmentCost,
     enrichmentBudget: campaign.enrichmentBudget,
   });
