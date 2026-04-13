@@ -48,28 +48,24 @@ export async function triggerNextIteration(
   const totalLeads = completedSets.reduce((sum, s) => sum + s._count.results, 0);
   const completedIterations = completedSets.length;
 
-  // ── Target met check ──
+  // ── Determine if we should stop AFTER processing this round ──
+  let shouldStopAfterThisRound = false;
+  let stopReason = "";
+
   if (totalLeads >= campaign.targetLeads) {
-    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "completed" } });
-    await publishDiscoveryEvent(completedKhSetId, "campaign_completed",
-      `Target met! ${totalLeads}/${campaign.targetLeads} leads found in ${completedIterations} rounds.`);
-    return;
+    shouldStopAfterThisRound = true;
+    stopReason = `Target met! ${totalLeads}/${campaign.targetLeads} leads found in ${completedIterations} rounds.`;
+  } else if (completedIterations >= campaign.maxIterations) {
+    shouldStopAfterThisRound = true;
+    stopReason = `Max iterations reached (${completedIterations}). ${totalLeads}/${campaign.targetLeads} leads found.`;
+  } else if (completedIterations > 1 && newResultCount < MIN_NEW_LEADS_PER_RUN) {
+    shouldStopAfterThisRound = true;
+    stopReason = `Diminishing returns — only ${newResultCount} new leads.`;
   }
 
-  // ── Max iterations check ──
-  if (completedIterations >= campaign.maxIterations) {
-    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "completed" } });
-    await publishDiscoveryEvent(completedKhSetId, "campaign_completed",
-      `Max iterations reached (${completedIterations}). ${totalLeads}/${campaign.targetLeads} leads found.`);
-    return;
-  }
-
-  // ── Diminishing returns (raw count) ──
-  if (completedIterations > 1 && newResultCount < MIN_NEW_LEADS_PER_RUN) {
-    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "completed" } });
-    await publishDiscoveryEvent(completedKhSetId, "campaign_completed",
-      `Diminishing returns — only ${newResultCount} new leads. Stopping.`);
-    return;
+  if (shouldStopAfterThisRound) {
+    await publishDiscoveryEvent(completedKhSetId, "campaign_stopping",
+      `${stopReason} Running final profiling and enrichment on this round's results...`);
   }
 
   const campaignContext: CampaignContext = {
@@ -205,7 +201,13 @@ export async function triggerNextIteration(
     });
   }
 
-  // ── PHASE 5: Pause for approval (30s auto-continue on client) ──
+  // ── PHASE 5: Stop or continue ──
+  if (shouldStopAfterThisRound) {
+    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "completed" } });
+    await publishDiscoveryEvent(completedKhSetId, "campaign_completed", stopReason);
+    return;
+  }
+
   await prisma.campaign.update({ where: { id: campaignId }, data: { status: "awaiting_approval" } });
 
   const nextIteration = completedIterations + 1;
