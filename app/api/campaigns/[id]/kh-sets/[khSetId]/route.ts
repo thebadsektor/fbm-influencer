@@ -75,3 +75,40 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   });
   return NextResponse.json(updated);
 }
+
+export async function DELETE(_req: NextRequest, { params }: Params) {
+  const user = await getRequiredUser();
+  const { id, khSetId } = await params;
+
+  const campaign = await prisma.campaign.findFirst({ where: { id, userId: user.id } });
+  if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const existing = await prisma.kHSet.findUnique({ where: { id: khSetId } });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Cascade: delete enrichment runs → results → iteration → KH set
+  await prisma.enrichmentRun.deleteMany({
+    where: { result: { khSetId } },
+  });
+  await prisma.result.deleteMany({ where: { khSetId } });
+  await prisma.campaignIteration.deleteMany({ where: { khSetId } });
+  await prisma.kHSet.delete({ where: { id: khSetId } });
+
+  // If campaign was failed due to this round, reset to awaiting_approval or completed
+  if (campaign.status === "failed") {
+    const remainingSets = await prisma.kHSet.count({ where: { campaignId: id } });
+    if (remainingSets > 0) {
+      await prisma.campaign.update({
+        where: { id },
+        data: { status: "awaiting_approval" },
+      });
+    } else {
+      await prisma.campaign.update({
+        where: { id },
+        data: { status: "draft" },
+      });
+    }
+  }
+
+  return NextResponse.json({ ok: true });
+}

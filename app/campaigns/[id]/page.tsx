@@ -388,6 +388,23 @@ function TimelineRound({
   const profilingProgressData = profilingProgressEvent?.data as { current?: number; total?: number } | undefined;
   const profilingSummaryEvent = logs.filter((l) => l.stage === "profiling_summary").slice(-1)[0];
 
+  const handleRetryDiscovery = async () => {
+    // Reset to draft then re-submit
+    await fetch(`/api/campaigns/${campaignId}/kh-sets/${khSet.id}/reset`, { method: "POST" });
+    await fetch(`/api/campaigns/${campaignId}/kh-sets/${khSet.id}/submit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ platform: khSet.platform || "both" }),
+    });
+    onRefresh();
+  };
+
+  const handleDeleteRound = async () => {
+    if (!window.confirm(`Delete Round ${khSet.iterationNumber}? This will remove all its results.`)) return;
+    await fetch(`/api/campaigns/${campaignId}/kh-sets/${khSet.id}`, { method: "DELETE" });
+    onRefresh();
+  };
+
   const handleRetryProfiling = async () => {
     setRetrying(true);
     try {
@@ -405,10 +422,15 @@ function TimelineRound({
         <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary text-primary-foreground text-sm font-bold">
           {khSet.iterationNumber}
         </div>
-        <h3 className="text-lg font-semibold">Round {khSet.iterationNumber}</h3>
+        <h3 className="text-lg font-semibold flex-1">Round {khSet.iterationNumber}</h3>
         <span className="text-sm text-muted-foreground">
           {khSet.keywords.length} kw, {khSet.hashtags.length} ht &middot; {khSet.platform || "both"}
         </span>
+        {khSet.status === "failed" && (
+          <Button variant="ghost" size="icon" onClick={handleDeleteRound} className="text-muted-foreground hover:text-destructive h-7 w-7">
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
       </div>
 
       {/* Step 1: Discovery */}
@@ -417,6 +439,8 @@ function TimelineRound({
         status={getDiscoveryStatus()}
         icon={<Search className="h-4 w-4" />}
         summary={resultCount > 0 ? `${resultCount} creators scraped` : undefined}
+        onRetry={getDiscoveryStatus() === "failed" ? handleRetryDiscovery : undefined}
+        retryLabel="Retry Discovery"
         duration={formatDuration(iteration?.discoveryDuration)}
         defaultExpanded={isLatest && khSet.status === "processing"}
       >
@@ -619,6 +643,18 @@ function TimelineRound({
               await fetch(`/api/campaigns/${campaignId}/continue`, { method: "POST" });
               onRefresh();
             }}>Start Next Round</Button>
+          </div>
+        )}
+        {/* Show continue button when campaign stopped but target not met */}
+        {isLatest && ["failed", "completed", "aborted"].includes(campaignStatus) && getOptimizationStatus() === "completed" && (
+          <div className="p-3 rounded-lg bg-muted/50 border text-sm">
+            <p className="text-muted-foreground mb-2">Campaign {campaignStatus}. Target not yet reached.</p>
+            <Button size="sm" onClick={async () => {
+              await fetch(`/api/campaigns/${campaignId}/continue`, { method: "POST" });
+              onRefresh();
+            }}>
+              <Sparkles className="h-3 w-3 mr-1" /> Continue Discovery
+            </Button>
           </div>
         )}
       </TimelineStep>

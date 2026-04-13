@@ -216,8 +216,9 @@ export async function continueToNextRound(campaignId: string) {
   });
 
   if (!campaign) throw new Error("Campaign not found");
-  if (campaign.status !== "awaiting_approval") {
-    throw new Error(`Campaign is in "${campaign.status}" status, expected "awaiting_approval"`);
+  const allowedStatuses = ["awaiting_approval", "failed", "completed", "aborted"];
+  if (!allowedStatuses.includes(campaign.status)) {
+    throw new Error(`Campaign is in "${campaign.status}" status — cannot continue while active`);
   }
 
   const completedSets = campaign.khSets.filter((s) => s.status === "completed");

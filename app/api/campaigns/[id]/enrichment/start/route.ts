@@ -56,7 +56,14 @@ export async function POST(
       platformId: true,
       creatorName: true,
       creatorHandle: true,
+      followers: true,
+      crawlTargets: true,
+      campaignFitScore: true,
     },
+    orderBy: [
+      { campaignFitScore: { sort: "desc", nulls: "last" } },
+      { followers: { sort: "desc", nulls: "last" } },
+    ],
     take: batchSize,
   });
 

@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/select";
 import { Mail, Loader2, DollarSign, Youtube } from "lucide-react";
 
+const COST_PER_CHANNEL = 0.005;
+
 interface EmailStats {
   total: number;
   withEmail: number;
@@ -25,15 +27,13 @@ interface EnrichmentStatus {
   activeRuns: { workflow: string; total: number; running: number; pending: number }[];
   recentRuns: { count: number; emailsFound: number; totalCost: number };
   totalEnrichmentCost: number;
-  enrichmentBudget: number | null;
 }
 
 export function EnrichmentCard({ campaignId }: { campaignId: string }) {
   const [status, setStatus] = useState<EnrichmentStatus | null>(null);
   const [batchSize, setBatchSize] = useState("50");
-  const [estimating, setEstimating] = useState(false);
-  const [estimate, setEstimate] = useState<{ count: number; estimatedCost: number } | null>(null);
   const [starting, setStarting] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadStatus = useCallback(async () => {
@@ -43,29 +43,11 @@ export function EnrichmentCard({ campaignId }: { campaignId: string }) {
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
 
-  // Poll while enrichment is running
   useEffect(() => {
     if (!status?.activeRuns.length) return;
     const interval = setInterval(loadStatus, 5000);
     return () => clearInterval(interval);
   }, [status?.activeRuns.length, loadStatus]);
-
-  const handleEstimate = async () => {
-    setEstimating(true);
-    setError(null);
-    const res = await fetch(`/api/campaigns/${campaignId}/enrichment/start`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workflow: "youtube-email-scraper", batchSize: Number(batchSize), confirm: false }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setEstimate(data);
-    } else {
-      setError(data.error || "Failed to estimate");
-    }
-    setEstimating(false);
-  };
 
   const handleStart = async () => {
     setStarting(true);
@@ -77,10 +59,10 @@ export function EnrichmentCard({ campaignId }: { campaignId: string }) {
     });
     const data = await res.json();
     if (res.ok) {
-      setEstimate(null);
+      setShowConfirm(false);
       await loadStatus();
     } else {
-      setError(data.error || "Failed to start enrichment");
+      setError(data.error || "Failed to start");
     }
     setStarting(false);
   };
@@ -92,6 +74,8 @@ export function EnrichmentCard({ campaignId }: { campaignId: string }) {
   const tkStats = emailStats.byPlatform["TIKTOK"];
   const isRunning = activeRuns.length > 0;
   const ytNeedEnrichment = ytStats ? ytStats.total - ytStats.withEmail : 0;
+  const batch = Math.min(Number(batchSize), ytNeedEnrichment);
+  const estimatedCost = (batch * COST_PER_CHANNEL).toFixed(2);
 
   return (
     <Card>
@@ -127,91 +111,61 @@ export function EnrichmentCard({ campaignId }: { campaignId: string }) {
           )}
         </div>
 
-        {/* Enrichment cost tracker */}
         {totalEnrichmentCost > 0 && (
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <DollarSign className="h-3 w-3" />
             Total enrichment cost: ${totalEnrichmentCost.toFixed(2)}
-            {recentRuns.count > 0 && ` • ${recentRuns.emailsFound} emails found from ${recentRuns.count} runs`}
+            {recentRuns.count > 0 && ` • ${recentRuns.emailsFound} emails from ${recentRuns.count} runs`}
           </p>
         )}
 
-        {/* Active run progress */}
+        {/* Active run */}
         {isRunning && (
-          <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-            {activeRuns.map((run) => (
-              <div key={run.workflow} className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                <span className="text-sm">
-                  Processing {run.running + run.pending} channels...
-                  ({run.running} active, {run.pending} queued)
-                </span>
-              </div>
-            ))}
+          <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+            <span className="text-sm">Processing channels...</span>
           </div>
         )}
 
-        {/* Enrichment controls */}
+        {/* Enrichment action */}
         {!isRunning && ytNeedEnrichment > 0 && (
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Batch size:</span>
-                <Select value={batchSize} onValueChange={(v) => { setBatchSize(v); setEstimate(null); }}>
-                  <SelectTrigger className="w-24 h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="25">25</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                    <SelectItem value="200">200</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {ytNeedEnrichment} YouTube channels need enrichment
-              </span>
+              <span className="text-sm text-muted-foreground">Batch:</span>
+              <Select value={batchSize} onValueChange={(v) => { setBatchSize(v); setShowConfirm(false); }}>
+                <SelectTrigger className="w-20 h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {["10", "25", "50", "100", "200"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <span className="text-xs text-muted-foreground flex-1">{ytNeedEnrichment} channels need enrichment</span>
             </div>
 
-            {/* Estimate or confirm */}
-            {!estimate ? (
-              <Button variant="outline" onClick={handleEstimate} disabled={estimating} className="w-full">
-                {estimating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Youtube className="h-4 w-4 mr-2" />}
-                Check YouTube Enrichment Cost
+            {!showConfirm ? (
+              <Button variant="outline" onClick={() => setShowConfirm(true)} className="w-full">
+                <Youtube className="h-4 w-4 mr-2" />
+                Enrich YouTube Emails (~${estimatedCost})
               </Button>
             ) : (
-              <div className="p-3 rounded-lg bg-muted/50 border space-y-2">
-                <p className="text-sm">
-                  Ready to enrich <strong>{estimate.count}</strong> YouTube channels
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border">
+                <p className="text-sm flex-1">
+                  Enrich <strong>{batch}</strong> channels for ~<strong>${estimatedCost}</strong>?
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  Estimated cost: <strong>${estimate.estimatedCost.toFixed(3)}</strong>
-                </p>
-                <div className="flex gap-2">
-                  <Button onClick={handleStart} disabled={starting} size="sm">
-                    {starting ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Mail className="h-3 w-3 mr-1" />}
-                    Start Enrichment
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setEstimate(null)}>
-                    Cancel
-                  </Button>
-                </div>
+                <Button size="sm" onClick={handleStart} disabled={starting}>
+                  {starting ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Mail className="h-3 w-3 mr-1" />}
+                  Run
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowConfirm(false)}>Cancel</Button>
               </div>
             )}
           </div>
         )}
 
         {ytNeedEnrichment === 0 && ytStats && (
-          <p className="text-sm text-muted-foreground text-center py-2">
-            All YouTube channels have been enriched ✓
-          </p>
+          <p className="text-sm text-muted-foreground text-center py-2">All YouTube channels enriched ✓</p>
         )}
 
-        {error && (
-          <p className="text-sm text-red-500">{error}</p>
-        )}
+        {error && <p className="text-sm text-red-500">{error}</p>}
       </CardContent>
     </Card>
   );
