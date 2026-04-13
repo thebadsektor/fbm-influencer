@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mail, Loader2, Youtube, DollarSign, ExternalLink, CheckCircle2, XCircle, BarChart3 } from "lucide-react";
+import { Mail, Loader2, Youtube, DollarSign, ExternalLink, CheckCircle2, XCircle, BarChart3, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface WorkflowBreakdown {
   workflow: string;
@@ -54,33 +54,52 @@ export function EnrichmentSheet({
 }) {
   const [status, setStatus] = useState<EnrichmentStatus | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
-  const [tabData, setTabData] = useState<Record<string, unknown> | null>(null);
+  const [tabCache, setTabCache] = useState<Record<string, unknown>>({});
   const [tabLoading, setTabLoading] = useState(false);
   const [batchSize, setBatchSize] = useState("50");
   const [starting, setStarting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const perPage = 25;
 
+  // Load status (polling target)
   const loadStatus = useCallback(async () => {
-    if (!open) return;
     const res = await fetch(`/api/campaigns/${campaignId}/enrichment/status`);
     if (res.ok) setStatus(await res.json());
-  }, [campaignId, open]);
+  }, [campaignId]);
 
+  // Load tab data (cached per tab)
   const loadTab = useCallback(async (t: Tab) => {
-    if (t === "overview") { setTabData(null); return; }
+    if (t === "overview") return;
     setTabLoading(true);
     const res = await fetch(`/api/campaigns/${campaignId}/enrichment/details?tab=${t}`);
-    if (res.ok) setTabData(await res.json());
+    if (res.ok) {
+      const data = await res.json();
+      setTabCache((prev) => ({ ...prev, [t]: data }));
+    }
     setTabLoading(false);
   }, [campaignId]);
 
-  useEffect(() => { if (open) { loadStatus(); loadTab(tab); } }, [open, loadStatus, loadTab, tab]);
+  // Load status on open
+  useEffect(() => {
+    if (open) loadStatus();
+  }, [open, loadStatus]);
 
+  // Poll status only (not tabs)
   useEffect(() => {
     if (!open || !status?.totalActive) return;
     const interval = setInterval(loadStatus, 5000);
     return () => clearInterval(interval);
   }, [open, status?.totalActive, loadStatus]);
+
+  // Load tab data on tab switch (cached — only loads once per tab)
+  useEffect(() => {
+    if (!open || tab === "overview" || tabCache[tab]) return;
+    loadTab(tab);
+  }, [open, tab, tabCache, loadTab]);
+
+  // Reset page on tab switch
+  useEffect(() => { setPage(0); }, [tab]);
 
   const handleEnrich = async (workflowId: string) => {
     setStarting(workflowId);
@@ -95,9 +114,15 @@ export function EnrichmentSheet({
     setStarting(null);
   };
 
+  const refreshTab = () => {
+    setTabCache((prev) => { const n = { ...prev }; delete n[tab]; return n; });
+    loadTab(tab);
+  };
+
   const es = status?.emailStats;
   const ytStats = es?.byPlatform["YOUTUBE"];
   const tkStats = es?.byPlatform["TIKTOK"];
+  const currentTabData = tabCache[tab] as Record<string, unknown> | undefined;
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: "overview", label: "Overview", icon: <Mail className="h-3 w-3" /> },
@@ -106,16 +131,23 @@ export function EnrichmentSheet({
     { key: "insights", label: "Insights", icon: <BarChart3 className="h-3 w-3" /> },
   ];
 
+  // Pagination helper
+  const paginate = (items: unknown[]) => {
+    const totalPages = Math.ceil(items.length / perPage);
+    const pageItems = items.slice(page * perPage, (page + 1) * perPage);
+    return { pageItems, totalPages, total: items.length };
+  };
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[440px] sm:w-[500px] overflow-y-auto p-0">
-        <SheetHeader className="px-6 pt-6 pb-4">
-          <SheetTitle className="flex items-center gap-2">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[95vw] w-full h-[90vh] flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-0">
+          <DialogTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
             Email Enrichment
             {status?.totalActive ? <Badge variant="secondary" className="animate-pulse text-xs">{status.totalActive} active</Badge> : null}
-          </SheetTitle>
-        </SheetHeader>
+          </DialogTitle>
+        </DialogHeader>
 
         {/* Tabs */}
         <div className="flex border-b px-6">
@@ -123,7 +155,7 @@ export function EnrichmentSheet({
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 tab === t.key ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -132,231 +164,303 @@ export function EnrichmentSheet({
           ))}
         </div>
 
-        {!status ? (
-          <div className="py-8 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></div>
-        ) : (
-          <div className="pb-6">
-            {/* OVERVIEW TAB */}
-            {tab === "overview" && (
-              <div className="space-y-5 pt-4">
-                <div className="px-6">
-                  <div className="flex items-baseline justify-between mb-2">
-                    <p className="text-2xl font-bold">{es!.withEmail} <span className="text-sm font-normal text-muted-foreground">/ {es!.total} emails</span></p>
-                    <span className="text-sm text-muted-foreground">{es!.percentage}%</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                    <div className="h-full bg-green-500 rounded-full transition-all duration-500" style={{ width: `${es!.percentage}%` }} />
-                  </div>
-                </div>
-
-                {/* Platform — full width */}
-                <div className="-mx-0">
-                  {ytStats && (
-                    <div className="flex items-center justify-between px-6 py-2.5 bg-muted/50 border-y border-border/50">
-                      <div className="flex items-center gap-2"><Youtube className="h-4 w-4 text-red-500" /><span className="text-sm font-medium">YouTube</span></div>
-                      <span className="text-sm tabular-nums">{ytStats.withEmail} / {ytStats.total} <span className="text-muted-foreground">({ytStats.percentage}%)</span></span>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto">
+          {!status ? (
+            <div className="py-12 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>
+          ) : (
+            <>
+              {/* OVERVIEW TAB */}
+              {tab === "overview" && (
+                <div className="max-w-2xl mx-auto space-y-6 py-6 px-6">
+                  {/* Overall progress */}
+                  <div>
+                    <div className="flex items-baseline justify-between mb-2">
+                      <p className="text-3xl font-bold">{es!.withEmail} <span className="text-base font-normal text-muted-foreground">/ {es!.total} emails</span></p>
+                      <span className="text-lg text-muted-foreground">{es!.percentage}%</span>
                     </div>
-                  )}
-                  {tkStats && (
-                    <div className="flex items-center justify-between px-6 py-2.5 bg-muted/50 border-b border-border/50">
-                      <div className="flex items-center gap-2"><span>🎵</span><span className="text-sm font-medium">TikTok</span></div>
-                      <span className="text-sm tabular-nums">{tkStats.withEmail} / {tkStats.total} <span className="text-muted-foreground">({tkStats.percentage}%)</span></span>
+                    <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+                      <div className="h-full bg-green-500 rounded-full transition-all duration-500" style={{ width: `${es!.percentage}%` }} />
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                {/* Workflows */}
-                <div className="space-y-2 px-6">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Workflows</p>
-                  {status.workflowBreakdown.map((wf) => {
-                    const totalRuns = wf.completed + wf.running + wf.pending + wf.failed;
-                    const isActive = wf.running > 0 || wf.pending > 0;
-                    return (
-                      <div key={wf.workflow} className="p-3 rounded-lg border space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">{wf.label}</span>
-                          {isActive && <Badge variant="secondary" className="animate-pulse text-xs">{wf.running + wf.pending} active</Badge>}
+                  {/* Platform — full width cards */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {ytStats && (
+                      <div className="p-4 bg-muted/50 border">
+                        <div className="flex items-center gap-2 mb-2"><Youtube className="h-4 w-4 text-red-500" /><span className="font-medium">YouTube</span></div>
+                        <p className="text-2xl font-bold">{ytStats.withEmail} <span className="text-sm font-normal text-muted-foreground">/ {ytStats.total}</span></p>
+                        <p className="text-xs text-muted-foreground">{ytStats.percentage}% with email</p>
+                      </div>
+                    )}
+                    {tkStats && (
+                      <div className="p-4 bg-muted/50 border">
+                        <div className="flex items-center gap-2 mb-2"><span>🎵</span><span className="font-medium">TikTok</span></div>
+                        <p className="text-2xl font-bold">{tkStats.withEmail} <span className="text-sm font-normal text-muted-foreground">/ {tkStats.total}</span></p>
+                        <p className="text-xs text-muted-foreground">{tkStats.percentage}% with email</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Workflows */}
+                  <div className="space-y-3">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Workflows</p>
+                    {status.workflowBreakdown.map((wf) => {
+                      const totalRuns = wf.completed + wf.running + wf.pending + wf.failed;
+                      const isActive = wf.running > 0 || wf.pending > 0;
+                      return (
+                        <div key={wf.workflow} className="p-4 rounded-lg border space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">{wf.label}</span>
+                            {isActive && <Badge variant="secondary" className="animate-pulse text-xs">{wf.running + wf.pending} active</Badge>}
+                          </div>
+                          {totalRuns > 0 ? (
+                            <div className="grid grid-cols-4 gap-2 text-center">
+                              <div className="p-2 rounded bg-muted/50"><p className="text-lg font-bold text-green-500">{wf.completed}</p><p className="text-xs text-muted-foreground">done</p></div>
+                              <div className="p-2 rounded bg-muted/50"><p className="text-lg font-bold text-blue-400">{wf.running + wf.pending}</p><p className="text-xs text-muted-foreground">active</p></div>
+                              <div className="p-2 rounded bg-muted/50"><p className="text-lg font-bold text-red-400">{wf.failed}</p><p className="text-xs text-muted-foreground">failed</p></div>
+                              <div className="p-2 rounded bg-muted/50"><p className="text-lg font-bold text-green-400">{wf.emailsFound}</p><p className="text-xs text-muted-foreground">emails</p></div>
+                            </div>
+                          ) : <p className="text-sm text-muted-foreground">No runs yet</p>}
                         </div>
-                        {totalRuns > 0 && (
-                          <div className="grid grid-cols-4 gap-1 text-center text-xs">
-                            <div><p className="font-bold text-green-500">{wf.completed}</p><p className="text-muted-foreground">done</p></div>
-                            <div><p className="font-bold text-blue-400">{wf.running + wf.pending}</p><p className="text-muted-foreground">active</p></div>
-                            <div><p className="font-bold text-red-400">{wf.failed}</p><p className="text-muted-foreground">failed</p></div>
-                            <div><p className="font-bold text-green-400">{wf.emailsFound}</p><p className="text-muted-foreground">emails</p></div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Manual trigger */}
+                  <div className="space-y-3 pt-3 border-t">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Manual Enrichment</p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-muted-foreground">Batch:</span>
+                      <Select value={batchSize} onValueChange={setBatchSize}>
+                        <SelectTrigger className="w-24 h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent>{["10", "25", "50", "100", "200"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex gap-3">
+                      <Button variant="outline" className="flex-1" disabled={!!starting} onClick={() => handleEnrich("youtube-email-scraper")}>
+                        {starting === "youtube-email-scraper" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Youtube className="h-4 w-4 mr-2" />} Enrich YouTube
+                      </Button>
+                      <Button variant="outline" className="flex-1" disabled={!!starting} onClick={() => handleEnrich("tiktok-linktree-scraper")}>
+                        {starting === "tiktok-linktree-scraper" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <span className="mr-2">🎵</span>} Enrich TikTok
+                      </Button>
+                    </div>
+                    {error && <p className="text-sm text-red-500">{error}</p>}
+                  </div>
+
+                  {status.totalEnrichmentCost > 0 && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 pt-2 border-t"><DollarSign className="h-3 w-3" />Total: ${status.totalEnrichmentCost.toFixed(2)}</p>
+                  )}
+                </div>
+              )}
+
+              {/* ENRICHED TAB */}
+              {tab === "enriched" && (
+                <div className="py-4">
+                  {tabLoading && !currentTabData ? <div className="py-12 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div> : (() => {
+                    const items = (currentTabData?.results as unknown[]) || [];
+                    const { pageItems, totalPages, total } = paginate(items);
+                    return (
+                      <>
+                        <div className="flex items-center justify-between px-6 mb-3">
+                          <p className="text-sm text-muted-foreground">{total} contacts with email</p>
+                          <Button variant="ghost" size="sm" onClick={refreshTab} className="text-xs">Refresh</Button>
+                        </div>
+                        <table className="w-full text-sm">
+                          <thead><tr className="border-b text-xs text-muted-foreground">
+                            <th className="text-left px-6 py-2 font-medium">Creator</th>
+                            <th className="text-left px-3 py-2 font-medium">Email</th>
+                            <th className="text-left px-3 py-2 font-medium">Source</th>
+                            <th className="text-right px-3 py-2 font-medium">Fit</th>
+                            <th className="text-right px-6 py-2 font-medium">Followers</th>
+                          </tr></thead>
+                          <tbody>
+                            {pageItems.map((r) => {
+                              const c = r as Record<string, unknown>;
+                              const src = c.emailSource === "profile_bio" ? "Bio" : c.emailSource === "video_description" ? "Video" : c.emailSource === "apify-dataovercoffee" ? "YouTube API" : c.emailSource === "apify-linktree-scraper" ? "Linktree" : String(c.emailSource || "—");
+                              return (
+                                <tr key={c.id as string} className="border-b hover:bg-muted/30">
+                                  <td className="px-6 py-2">
+                                    <p className="font-medium truncate max-w-[200px]">{c.creatorName as string || "Unknown"}</p>
+                                    <p className="text-xs text-muted-foreground">@{c.creatorHandle as string}</p>
+                                  </td>
+                                  <td className="px-3 py-2 text-green-500 truncate max-w-[200px]">{c.email as string}</td>
+                                  <td className="px-3 py-2"><Badge variant="outline" className="text-xs">{src}</Badge></td>
+                                  <td className="px-3 py-2 text-right tabular-nums">{c.campaignFitScore != null ? c.campaignFitScore as number : "—"}</td>
+                                  <td className="px-6 py-2 text-right tabular-nums text-muted-foreground">{c.followers as string || "—"}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between px-6 pt-3">
+                            <p className="text-xs text-muted-foreground">Page {page + 1} of {totalPages}</p>
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+                              <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}><ChevronRight className="h-4 w-4" /></Button>
+                            </div>
                           </div>
                         )}
-                        {totalRuns === 0 && <p className="text-xs text-muted-foreground">No runs yet</p>}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* ATTEMPTED TAB */}
+              {tab === "attempted" && (
+                <div className="py-4">
+                  {tabLoading && !currentTabData ? <div className="py-12 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div> : (() => {
+                    const items = (currentTabData?.results as unknown[]) || [];
+                    const { pageItems, totalPages, total } = paginate(items);
+                    return (
+                      <>
+                        <div className="flex items-center justify-between px-6 mb-3">
+                          <p className="text-sm text-muted-foreground">{total} enriched but no email found</p>
+                          <Button variant="ghost" size="sm" onClick={refreshTab} className="text-xs">Refresh</Button>
+                        </div>
+                        <table className="w-full text-sm">
+                          <thead><tr className="border-b text-xs text-muted-foreground">
+                            <th className="text-left px-6 py-2 font-medium">Creator</th>
+                            <th className="text-left px-3 py-2 font-medium">Workflow Tried</th>
+                            <th className="text-right px-3 py-2 font-medium">Fit</th>
+                            <th className="text-right px-6 py-2 font-medium">Followers</th>
+                          </tr></thead>
+                          <tbody>
+                            {pageItems.map((r) => {
+                              const c = r as Record<string, unknown>;
+                              const runs = (c.enrichmentRuns as { workflow: string }[]) || [];
+                              const tried = runs.map((r) => r.workflow === "youtube-email-scraper" ? "YouTube" : r.workflow === "tiktok-linktree-scraper" ? "Linktree" : r.workflow).join(", ") || "—";
+                              return (
+                                <tr key={c.id as string} className="border-b hover:bg-muted/30">
+                                  <td className="px-6 py-2">
+                                    <p className="font-medium truncate max-w-[200px]">{c.creatorName as string || "Unknown"}</p>
+                                    <p className="text-xs text-muted-foreground">@{c.creatorHandle as string}</p>
+                                  </td>
+                                  <td className="px-3 py-2"><Badge variant="outline" className="text-xs">{tried}</Badge></td>
+                                  <td className="px-3 py-2 text-right tabular-nums">{c.campaignFitScore != null ? c.campaignFitScore as number : "—"}</td>
+                                  <td className="px-6 py-2 text-right tabular-nums text-muted-foreground">{c.followers as string || "—"}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between px-6 pt-3">
+                            <p className="text-xs text-muted-foreground">Page {page + 1} of {totalPages}</p>
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+                              <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}><ChevronRight className="h-4 w-4" /></Button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* INSIGHTS TAB */}
+              {tab === "insights" && (
+                <div className="max-w-2xl mx-auto py-6 px-6">
+                  {tabLoading && !currentTabData ? <div className="py-12 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div> : currentTabData && (() => {
+                    const summary = currentTabData.summary as { enrichmentSuccessRate?: number; bioParsingRate?: number; totalEnriched?: number; totalEmailsFromEnrichment?: number } | undefined;
+                    const sourceBreakdown = currentTabData.sourceBreakdown as Record<string, number> | undefined;
+                    const followerTierStats = currentTabData.followerTierStats as { tier: string; total: number; found: number; rate: number }[] | undefined;
+                    return (
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Performance Insights</p>
+                          <Button variant="ghost" size="sm" onClick={refreshTab} className="text-xs">Refresh</Button>
+                        </div>
+
+                        {/* Summary cards */}
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                            <p className="text-2xl font-bold">{summary?.enrichmentSuccessRate || 0}%</p>
+                            <p className="text-xs text-muted-foreground">API enrichment hit rate</p>
+                          </div>
+                          <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                            <p className="text-2xl font-bold">{summary?.bioParsingRate || 0}%</p>
+                            <p className="text-xs text-muted-foreground">Bio parsing rate</p>
+                          </div>
+                          <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                            <p className="text-2xl font-bold">{summary?.totalEnriched || 0}</p>
+                            <p className="text-xs text-muted-foreground">Channels processed</p>
+                          </div>
+                        </div>
+
+                        {/* Email source breakdown */}
+                        {sourceBreakdown && Object.keys(sourceBreakdown).length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Email Sources</p>
+                            <div className="space-y-2">
+                              {Object.entries(sourceBreakdown).sort(([, a], [, b]) => b - a).map(([source, count]) => {
+                                const total = Object.values(sourceBreakdown).reduce((s, c) => s + c, 0);
+                                const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                                return (
+                                  <div key={source}>
+                                    <div className="flex items-center justify-between text-sm mb-1">
+                                      <span>{source}</span>
+                                      <span className="font-medium">{count} <span className="text-muted-foreground">({pct}%)</span></span>
+                                    </div>
+                                    <div className="w-full bg-muted rounded-full h-1.5">
+                                      <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Follower tier stats */}
+                        {followerTierStats && followerTierStats.length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">API Enrichment by Follower Tier</p>
+                            <table className="w-full text-sm">
+                              <thead><tr className="border-b text-xs text-muted-foreground">
+                                <th className="text-left py-2 font-medium">Tier</th>
+                                <th className="text-right py-2 font-medium">Processed</th>
+                                <th className="text-right py-2 font-medium">Emails Found</th>
+                                <th className="text-right py-2 font-medium">Hit Rate</th>
+                              </tr></thead>
+                              <tbody>
+                                {followerTierStats.map((t) => (
+                                  <tr key={t.tier} className="border-b">
+                                    <td className="py-2">{t.tier}</td>
+                                    <td className="py-2 text-right tabular-nums">{t.total}</td>
+                                    <td className="py-2 text-right tabular-nums text-green-500">{t.found}</td>
+                                    <td className="py-2 text-right tabular-nums">{t.rate}%</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        {/* What's working */}
+                        <div className="p-4 rounded-lg bg-muted/50 border space-y-2">
+                          <p className="font-medium text-sm">What&apos;s working</p>
+                          <p className="text-sm text-muted-foreground">
+                            Bio parsing ({summary?.bioParsingRate || 0}%) is the most effective email source — it&apos;s free and captures emails directly from creator profiles. API enrichment has a {summary?.enrichmentSuccessRate || 0}% hit rate across {summary?.totalEnriched || 0} channels processed.
+                          </p>
+                          {(summary?.enrichmentSuccessRate || 0) < 5 && (summary?.totalEnriched || 0) > 50 && (
+                            <p className="text-sm text-muted-foreground">
+                              The low API hit rate suggests most creators don&apos;t have public business emails on YouTube. Focus enrichment budget on creators with higher follower counts or existing link-in-bio URLs.
+                            </p>
+                          )}
+                        </div>
                       </div>
                     );
-                  })}
+                  })()}
                 </div>
-
-                {/* Manual trigger */}
-                <div className="space-y-3 pt-2 border-t px-6">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Manual Enrichment</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Batch:</span>
-                    <Select value={batchSize} onValueChange={setBatchSize}>
-                      <SelectTrigger className="w-20 h-8"><SelectValue /></SelectTrigger>
-                      <SelectContent>{["10", "25", "50", "100", "200"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1" disabled={!!starting} onClick={() => handleEnrich("youtube-email-scraper")}>
-                      {starting === "youtube-email-scraper" ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Youtube className="h-3 w-3 mr-1" />} Enrich YouTube
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1" disabled={!!starting} onClick={() => handleEnrich("tiktok-linktree-scraper")}>
-                      {starting === "tiktok-linktree-scraper" ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <span className="mr-1">🎵</span>} Enrich TikTok
-                    </Button>
-                  </div>
-                  {error && <p className="text-sm text-red-500">{error}</p>}
-                </div>
-
-                {status.totalEnrichmentCost > 0 && (
-                  <div className="pt-2 border-t px-6">
-                    <p className="text-xs text-muted-foreground flex items-center gap-1"><DollarSign className="h-3 w-3" />Total: ${status.totalEnrichmentCost.toFixed(2)}</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ENRICHED TAB */}
-            {tab === "enriched" && (
-              <div className="pt-4">
-                {tabLoading ? <div className="py-8 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></div> : (
-                  <div>
-                    <p className="text-xs text-muted-foreground px-6 mb-3">{(tabData as { total?: number })?.total || 0} contacts with email</p>
-                    <div className="divide-y">
-                      {((tabData as { results?: unknown[] })?.results || []).map((r: unknown) => {
-                        const c = r as Record<string, unknown>;
-                        return (
-                          <div key={c.id as string} className="px-6 py-2.5 flex items-center gap-3">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{c.creatorName as string || "Unknown"}</p>
-                              <p className="text-xs text-muted-foreground truncate">@{c.creatorHandle as string}</p>
-                            </div>
-                            <div className="text-right flex-shrink-0">
-                              <p className="text-xs text-green-500 truncate max-w-[160px]">{c.email as string}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {c.emailSource === "profile_bio" ? "Bio" :
-                                 c.emailSource === "video_description" ? "Video" :
-                                 c.emailSource === "apify-dataovercoffee" ? "YouTube Enrichment" :
-                                 c.emailSource === "apify-linktree-scraper" ? "Linktree" :
-                                 c.emailSource as string || "Unknown"}
-                                {c.campaignFitScore ? ` • Fit: ${c.campaignFitScore}` : ""}
-                              </p>
-                            </div>
-                            {(c.profileUrl as string) ? (
-                              <a href={c.profileUrl as string} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground">
-                                <ExternalLink className="h-3 w-3" />
-                              </a>
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ATTEMPTED (NO EMAIL) TAB */}
-            {tab === "attempted" && (
-              <div className="pt-4">
-                {tabLoading ? <div className="py-8 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></div> : (
-                  <div>
-                    <p className="text-xs text-muted-foreground px-6 mb-3">{(tabData as { total?: number })?.total || 0} contacts enriched but no email found</p>
-                    <div className="divide-y">
-                      {((tabData as { results?: unknown[] })?.results || []).map((r: unknown) => {
-                        const c = r as Record<string, unknown>;
-                        const runs = (c.enrichmentRuns as { workflow: string }[]) || [];
-                        return (
-                          <div key={c.id as string} className="px-6 py-2.5 flex items-center gap-3">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{c.creatorName as string || "Unknown"}</p>
-                              <p className="text-xs text-muted-foreground truncate">@{c.creatorHandle as string}</p>
-                            </div>
-                            <div className="text-right flex-shrink-0">
-                              <p className="text-xs text-muted-foreground">
-                                {runs.length > 0 ? runs.map((r) => r.workflow === "youtube-email-scraper" ? "YouTube" : "Linktree").join(", ") : "—"}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {c.followers ? `${parseInt(c.followers as string) >= 1000 ? `${Math.round(parseInt(c.followers as string) / 1000)}K` : c.followers} followers` : ""}
-                                {c.campaignFitScore ? ` • Fit: ${c.campaignFitScore}` : ""}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* INSIGHTS TAB */}
-            {tab === "insights" && (
-              <div className="pt-4 space-y-5 px-6">
-                {tabLoading ? <div className="py-8 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></div> : tabData && (
-                  <>
-                    {/* Summary stats */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="p-3 rounded-lg bg-muted/50 text-center">
-                        <p className="text-xl font-bold">{(tabData as { summary?: { enrichmentSuccessRate?: number } }).summary?.enrichmentSuccessRate || 0}%</p>
-                        <p className="text-xs text-muted-foreground">Enrichment hit rate</p>
-                      </div>
-                      <div className="p-3 rounded-lg bg-muted/50 text-center">
-                        <p className="text-xl font-bold">{(tabData as { summary?: { bioParsingRate?: number } }).summary?.bioParsingRate || 0}%</p>
-                        <p className="text-xs text-muted-foreground">Bio parsing rate</p>
-                      </div>
-                    </div>
-
-                    {/* Email source breakdown */}
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Email Sources</p>
-                      <div className="space-y-1.5">
-                        {Object.entries((tabData as { sourceBreakdown?: Record<string, number> }).sourceBreakdown || {})
-                          .sort(([, a], [, b]) => (b as number) - (a as number))
-                          .map(([source, count]) => (
-                          <div key={source} className="flex items-center justify-between">
-                            <span className="text-sm">{source}</span>
-                            <span className="text-sm font-medium">{count as number}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Success rate by follower tier */}
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Enrichment by Follower Tier</p>
-                      <div className="space-y-1.5">
-                        {((tabData as { followerTierStats?: { tier: string; total: number; found: number; rate: number }[] }).followerTierStats || []).map((t) => (
-                          <div key={t.tier} className="flex items-center justify-between text-sm">
-                            <span>{t.tier}</span>
-                            <span className="tabular-nums">
-                              <span className="text-green-500">{t.found}</span>
-                              <span className="text-muted-foreground"> / {t.total}</span>
-                              <span className="text-muted-foreground ml-1">({t.rate}%)</span>
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Recommendations */}
-                    <div className="p-3 rounded-lg bg-muted/50 border">
-                      <p className="text-xs font-medium mb-1">What&apos;s working</p>
-                      <p className="text-xs text-muted-foreground">
-                        Bio parsing ({(tabData as { summary?: { bioParsingRate?: number } }).summary?.bioParsingRate || 0}%) yields more emails than enrichment ({(tabData as { summary?: { enrichmentSuccessRate?: number } }).summary?.enrichmentSuccessRate || 0}%). Creators who include email in their bio or video descriptions are the most cost-effective source — no external API cost.
-                      </p>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </SheetContent>
-    </Sheet>
+              )}
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
