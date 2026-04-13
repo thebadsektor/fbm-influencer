@@ -103,5 +103,4 @@ export const IDLE_MESSAGES = [
   "The best leads are always in the last place you look...",
   "Distilling pure influence...",
   "Refining the search... again...",
-  "Your future top-performers are in here somewhere...",
 ];
