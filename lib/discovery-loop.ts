@@ -57,7 +57,9 @@ export async function triggerNextIteration(
     stopReason = `Target met! ${totalLeads}/${campaign.targetLeads} leads found in ${completedIterations} rounds.`;
   } else if (completedIterations >= campaign.maxIterations) {
     shouldStopAfterThisRound = true;
-    stopReason = `Max iterations reached (${completedIterations}). ${totalLeads}/${campaign.targetLeads} leads found.`;
+    stopReason = totalLeads >= campaign.targetLeads
+      ? `Max iterations reached and target met! ${totalLeads}/${campaign.targetLeads} leads.`
+      : `Max iterations reached (${completedIterations}). ${totalLeads}/${campaign.targetLeads} leads — target not yet met. You can continue manually.`;
   } else if (completedIterations > 1 && newResultCount < MIN_NEW_LEADS_PER_RUN) {
     shouldStopAfterThisRound = true;
     stopReason = `Diminishing returns — only ${newResultCount} new leads.`;
@@ -203,8 +205,12 @@ export async function triggerNextIteration(
 
   // ── PHASE 5: Stop or continue ──
   if (shouldStopAfterThisRound) {
-    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "completed" } });
-    await publishDiscoveryEvent(completedKhSetId, "campaign_completed", stopReason);
+    // Only mark "completed" if target is actually met. Otherwise "awaiting_approval" so user can continue.
+    const finalStatus = totalLeads >= campaign.targetLeads ? "completed" : "awaiting_approval";
+    await prisma.campaign.update({ where: { id: campaignId }, data: { status: finalStatus } });
+    await publishDiscoveryEvent(completedKhSetId,
+      finalStatus === "completed" ? "campaign_completed" : "campaign_paused",
+      stopReason);
     return;
   }
 

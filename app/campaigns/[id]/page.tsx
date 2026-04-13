@@ -366,10 +366,9 @@ function TimelineRound({
     if (getDiscoveryStatus() !== "completed") return "pending";
     if (iteration && iteration.profiledCount > 0) return "completed";
     if (isLatest && campaignStatus === "profiling") return "active";
-    // If campaign moved past profiling, profiling succeeded (iteration record comes later)
-    if (isLatest && ["analyzing", "awaiting_approval", "iterating"].includes(campaignStatus)) return "completed";
-    // Only show failed when campaign itself is failed
-    if (isLatest && campaignStatus === "failed") return "failed";
+    if (isLatest && ["analyzing", "enriching", "awaiting_approval", "iterating"].includes(campaignStatus)) return "completed";
+    // Campaign ended but profiling never ran for this round — needs action
+    if (isLatest && khSet.status === "completed" && !iteration && ["completed", "failed"].includes(campaignStatus)) return "failed";
     return "pending";
   };
 
