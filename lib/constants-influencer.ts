@@ -57,13 +57,20 @@ export const ENRICHMENT_WORKFLOWS = [
     label: "YouTube Email",
     platform: "YOUTUBE",
     minBatch: 25,
-    webhookPath: "youtube-email-enrichment",
+    webhookPath: "7cc825b0-c452-4c3f-acc3-ee8bc72bcd40",
     costPerResult: 0.12,
     platformIdPrefix: "UC", // YouTube channel IDs start with UC
   },
-  // Future workflows:
-  // { id: "tiktok-email-scraper", label: "TikTok Email", platform: "TIKTOK", minBatch: 25, webhookPath: "tiktok-email-enrichment", costPerResult: 0.08, platformIdPrefix: "" },
-  // { id: "linkinbio-crawler", label: "Link-in-Bio", platform: "ALL", minBatch: 10, webhookPath: "linkinbio-crawler", costPerResult: 0, platformIdPrefix: "" },
+  {
+    id: "tiktok-linktree-scraper",
+    label: "TikTok Linktree",
+    platform: "TIKTOK",
+    minBatch: 10,
+    webhookPath: "30ac38e5-2287-4a09-8249-915ef0088546",
+    costPerResult: 0.005,
+    platformIdPrefix: "",
+    inputType: "crawlTargets",
+  },
 ] as const;
 
 export const CAMPAIGN_STATUSES = {
