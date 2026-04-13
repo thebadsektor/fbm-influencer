@@ -5,17 +5,23 @@ import { getRequiredUser } from "@/lib/auth-helpers";
 import { profileBatch, type CampaignContext } from "@/lib/affinity-profiler";
 import { analyzeIteration } from "@/lib/iteration-analyzer";
 import { publishDiscoveryEvent } from "@/lib/redis";
+import { runEnrichmentStep } from "@/lib/enrichment-runner";
 
 /**
  * Retry AI profiling and/or analysis for a specific KH set.
+ * If body contains { enrichmentOnly: true }, runs only the enrichment step.
  * Used when a round gets stuck in "profiling" or "analyzing" status.
  */
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string; khSetId: string }> }
 ) {
   const user = await getRequiredUser();
   const { id, khSetId } = await params;
+
+  let body: Record<string, unknown> = {};
+  try { body = await req.json(); } catch { /* empty body is fine */ }
+  const enrichmentOnly = body.enrichmentOnly === true;
 
   const campaign = await prisma.campaign.findFirst({
     where: { id, userId: user.id },
@@ -25,6 +31,26 @@ export async function POST(
 
   const set = await prisma.kHSet.findUnique({ where: { id: khSetId } });
   if (!set) return NextResponse.json({ error: "KH set not found" }, { status: 404 });
+
+  // Enrichment-only mode: just run enrichment, skip profiling and analysis
+  if (enrichmentOnly) {
+    await publishDiscoveryEvent(khSetId, "enrichment_manual", "Manual enrichment triggered...");
+    const enrichmentResults = await runEnrichmentStep(id, khSetId);
+
+    // Update iteration record with new enrichment results
+    const existingIteration = await prisma.campaignIteration.findFirst({ where: { khSetId } });
+    if (existingIteration) {
+      await prisma.campaignIteration.update({
+        where: { id: existingIteration.id },
+        data: { enrichmentResults: JSON.parse(JSON.stringify(enrichmentResults)) },
+      });
+    }
+
+    // Restore previous campaign status
+    await prisma.campaign.update({ where: { id }, data: { status: "awaiting_approval" } });
+
+    return NextResponse.json({ ok: true, enrichmentResults });
+  }
 
   const campaignContext: CampaignContext = {
     name: campaign.name,

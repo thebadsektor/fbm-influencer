@@ -657,6 +657,25 @@ function TimelineRound({
             Enrichment in progress — checking qualified leads against available workflows...
           </div>
         )}
+        {/* Manual re-run — available when enrichment done but next round not yet started */}
+        {isLatest && getEnrichmentStatus() === "completed" &&
+          ["awaiting_approval", "completed", "failed"].includes(campaignStatus) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            onClick={async () => {
+              await fetch(`/api/campaigns/${campaignId}/kh-sets/${khSet.id}/reanalyze`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ enrichmentOnly: true }),
+              });
+              onRefresh();
+            }}
+          >
+            <RotateCcw className="h-3 w-3 mr-1" /> Run Enrichment Again
+          </Button>
+        )}
       </TimelineStep>
 
       {/* Step 5: Optimization Plan */}
