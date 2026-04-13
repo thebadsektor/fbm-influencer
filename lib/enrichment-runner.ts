@@ -2,34 +2,51 @@ import prisma from "@/lib/prisma";
 import { publishDiscoveryEvent } from "@/lib/redis";
 import { ENRICHMENT_WORKFLOWS } from "@/lib/constants-influencer";
 
+const STALE_RUN_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
+
 export interface EnrichmentResult {
   workflowId: string;
+  label: string;
   sent: number;
+  eligible: number;
   deferred: boolean;
   reason?: string;
 }
 
 /**
  * Run all eligible enrichment workflows for a campaign.
- * Checks ALL accumulated qualified leads across ALL rounds (not just current round).
+ * Checks ALL accumulated leads across ALL rounds.
  *
- * For each workflow in ENRICHMENT_WORKFLOWS:
- * - Count qualified leads across all campaign rounds
- * - If count >= minBatch → trigger n8n enrichment workflow
- * - If count < minBatch → defer with message
+ * Lifecycle:
+ * 1. Clean up stale runs (stuck "running" > 30 min)
+ * 2. For each workflow: count eligible leads, trigger if >= minBatch
+ * 3. Only completed runs block re-enrichment (failed runs allow retry)
  */
 export async function runEnrichmentStep(
   campaignId: string,
-  khSetId: string, // for Redis event scoping
+  khSetId: string,
 ): Promise<Record<string, EnrichmentResult>> {
   const results: Record<string, EnrichmentResult> = {};
 
-  // Get ALL KH set IDs for this campaign (accumulated across rounds)
   const allKhSets = await prisma.kHSet.findMany({
     where: { campaignId },
     select: { id: true },
   });
   const allKhSetIds = allKhSets.map((s) => s.id);
+
+  // ── Lifecycle: clean up stale runs ──
+  const staleCount = await prisma.enrichmentRun.updateMany({
+    where: {
+      status: "running",
+      startedAt: { lt: new Date(Date.now() - STALE_RUN_THRESHOLD_MS) },
+      result: { khSetId: { in: allKhSetIds } },
+    },
+    data: { status: "failed", error: "Timed out — no response from enrichment service" },
+  });
+  if (staleCount.count > 0) {
+    await publishDiscoveryEvent(khSetId, "enrichment_cleanup",
+      `Cleared ${staleCount.count} stale enrichment runs (stuck > 30min). Those leads are now eligible for retry.`);
+  }
 
   await prisma.campaign.update({
     where: { id: campaignId },
@@ -42,25 +59,25 @@ export async function runEnrichmentStep(
       ? {}
       : { platform: { contains: workflow.platform, mode: "insensitive" as const } };
 
-    // Build the where clause based on input type
+    // Base eligibility: ALL leads without email, across ALL rounds
+    // Only exclude leads with a COMPLETED run (failed runs allow retry)
     const baseWhere = {
-      khSetId: { in: allKhSetIds }, // ALL rounds, not just current
+      khSetId: { in: allKhSetIds },
       ...platformFilter,
-      campaignFitScore: { gte: 60 },
       OR: [{ email: null }, { email: "" }] as { email: null | string }[],
       NOT: {
         enrichmentRuns: {
           some: {
             workflow: workflow.id,
-            status: { in: ["completed", "running", "pending"] },
+            status: "completed" as const,
           },
         },
       },
     };
 
-    // Add input-type-specific filters
+    // Input-type-specific filters
     const extraWhere = inputType === "crawlTargets"
-      ? { crawlTargets: { not: { equals: "" } } } // must have linktree/beacons URLs
+      ? { AND: [{ crawlTargets: { not: null } }, { NOT: { crawlTargets: "" } }] as object[] }
       : workflow.platformIdPrefix
         ? { platformId: { startsWith: workflow.platformIdPrefix } }
         : {};
@@ -71,34 +88,33 @@ export async function runEnrichmentStep(
 
     if (eligibleCount < workflow.minBatch) {
       const reason = eligibleCount === 0
-        ? `No qualified ${workflow.label} leads available for enrichment.`
-        : `${eligibleCount} qualified ${workflow.label} leads — below minimum of ${workflow.minBatch} for cost-efficient enrichment. Collecting more next round.`;
+        ? `No ${workflow.label} leads available for enrichment.`
+        : `${eligibleCount} ${workflow.label} leads eligible — collecting more before enriching (minimum ${workflow.minBatch} for cost efficiency).`;
 
       await publishDiscoveryEvent(khSetId, "enrichment_deferred",
         reason, { workflow: workflow.id, count: eligibleCount, minBatch: workflow.minBatch });
 
-      results[workflow.id] = { workflowId: workflow.id, sent: 0, deferred: true, reason };
+      results[workflow.id] = { workflowId: workflow.id, label: workflow.label, sent: 0, eligible: eligibleCount, deferred: true, reason };
       continue;
     }
 
-    // Enough leads — trigger enrichment
     await publishDiscoveryEvent(khSetId, "enrichment_started",
-      `Enriching ${eligibleCount} ${workflow.label} leads...`,
+      `Enriching ${eligibleCount} ${workflow.label} leads (prioritized by fit score)...`,
       { workflow: workflow.id, count: eligibleCount });
 
     try {
-      const sent = await triggerN8nEnrichment(campaignId, khSetId, allKhSetIds, workflow, eligibleCount, inputType);
-      results[workflow.id] = { workflowId: workflow.id, sent, deferred: false };
+      const sent = await triggerN8nEnrichment(allKhSetIds, workflow, eligibleCount, inputType);
+      results[workflow.id] = { workflowId: workflow.id, label: workflow.label, sent, eligible: eligibleCount, deferred: false };
 
       await publishDiscoveryEvent(khSetId, "enrichment_triggered",
-        `${workflow.label} enrichment started for ${sent} leads. Results will arrive via callback.`,
+        `${workflow.label}: ${sent} leads sent for enrichment. Highest-fit leads processed first.`,
         { workflow: workflow.id, sent });
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       await publishDiscoveryEvent(khSetId, "enrichment_error",
         `${workflow.label} enrichment failed: ${errorMsg}`,
         { workflow: workflow.id, error: errorMsg });
-      results[workflow.id] = { workflowId: workflow.id, sent: 0, deferred: false, reason: `Failed: ${errorMsg}` };
+      results[workflow.id] = { workflowId: workflow.id, label: workflow.label, sent: 0, eligible: eligibleCount, deferred: false, reason: `Failed: ${errorMsg}` };
     }
   }
 
@@ -106,8 +122,6 @@ export async function runEnrichmentStep(
 }
 
 async function triggerN8nEnrichment(
-  campaignId: string,
-  khSetId: string,
   allKhSetIds: string[],
   workflow: typeof ENRICHMENT_WORKFLOWS[number],
   limit: number,
@@ -118,22 +132,22 @@ async function triggerN8nEnrichment(
     : { platform: { contains: workflow.platform, mode: "insensitive" as const } };
 
   const extraWhere = inputType === "crawlTargets"
-    ? { crawlTargets: { not: { equals: "" } } }
+    ? { AND: [{ crawlTargets: { not: null } }, { NOT: { crawlTargets: "" } }] as object[] }
     : workflow.platformIdPrefix
       ? { platformId: { startsWith: workflow.platformIdPrefix } }
       : {};
 
+  // Prioritize: highest fit score first, then highest followers
   const eligible = await prisma.result.findMany({
     where: {
       khSetId: { in: allKhSetIds },
       ...platformFilter,
-      campaignFitScore: { gte: 60 },
       OR: [{ email: null }, { email: "" }],
       NOT: {
         enrichmentRuns: {
           some: {
             workflow: workflow.id,
-            status: { in: ["completed", "running", "pending"] },
+            status: "completed" as const,
           },
         },
       },
@@ -149,21 +163,16 @@ async function triggerN8nEnrichment(
 
   if (eligible.length === 0) return 0;
 
-  // Build enrichment payload based on input type
   if (inputType === "crawlTargets") {
-    return await triggerUrlBasedEnrichment(eligible, workflow, khSetId);
+    return await triggerUrlBasedEnrichment(eligible, workflow);
   } else {
-    return await triggerPlatformIdBasedEnrichment(eligible, workflow, khSetId);
+    return await triggerPlatformIdBasedEnrichment(eligible, workflow);
   }
 }
 
-/**
- * YouTube-style: sends platformIds (channel IDs) to n8n
- */
 async function triggerPlatformIdBasedEnrichment(
   eligible: { id: string; platformId: string | null; creatorName: string | null }[],
   workflow: typeof ENRICHMENT_WORKFLOWS[number],
-  khSetId: string,
 ): Promise<number> {
   const withValidId = eligible.filter((r) => r.platformId);
   if (withValidId.length === 0) return 0;
@@ -199,15 +208,10 @@ async function triggerPlatformIdBasedEnrichment(
   return withValidId.length;
 }
 
-/**
- * Linktree-style: sends URLs from crawlTargets to n8n
- */
 async function triggerUrlBasedEnrichment(
   eligible: { id: string; platformId: string | null; creatorName: string | null; crawlTargets: string | null }[],
   workflow: typeof ENRICHMENT_WORKFLOWS[number],
-  khSetId: string,
 ): Promise<number> {
-  // Extract linktree/beacons URLs from crawlTargets
   const withUrls = eligible.filter((r) => r.crawlTargets).map((r) => {
     const urls = r.crawlTargets!.split(",").map((u) => u.trim()).filter((u) =>
       u.includes("linktr.ee") || u.includes("beacons.ai") || u.includes("msha.ke") || u.includes("hoo.be") || u.includes("campsite.bio")
@@ -221,7 +225,7 @@ async function triggerUrlBasedEnrichment(
   const startUrls: { url: string }[] = [];
 
   for (const result of withUrls) {
-    const url = result.urls[0]; // Use first linktree URL
+    const url = result.urls[0];
     const run = await prisma.enrichmentRun.create({
       data: {
         resultId: result.id,

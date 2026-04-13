@@ -102,7 +102,7 @@ interface IterationData {
   learnings: string[];
   topPerformingKeywords: string[];
   lowPerformingKeywords: string[];
-  enrichmentResults: Record<string, { workflowId: string; sent: number; deferred: boolean; reason?: string }> | null;
+  enrichmentResults: Record<string, { workflowId: string; label?: string; sent: number; eligible?: number; deferred: boolean; reason?: string }> | null;
 }
 
 interface KHSetData {
@@ -616,14 +616,17 @@ function TimelineRound({
           const er = iteration?.enrichmentResults;
           if (!er) return undefined;
           const entries = Object.values(er);
+          const sent = entries.filter((e) => !e.deferred && e.sent > 0);
           const deferred = entries.filter((e) => e.deferred);
-          const sent = entries.filter((e) => !e.deferred);
+          const parts: string[] = [];
           if (sent.length > 0) {
             const totalSent = sent.reduce((s, e) => s + e.sent, 0);
-            return `${totalSent} channels enriched`;
+            parts.push(`${totalSent} leads enriched`);
           }
-          if (deferred.length > 0) return deferred[0].reason || "Deferred to next round";
-          return undefined;
+          if (deferred.length > 0) {
+            parts.push(`${deferred.length} workflow${deferred.length > 1 ? "s" : ""} deferred`);
+          }
+          return parts.join(", ") || "Completed";
         })()}
         defaultExpanded={isLatest && getEnrichmentStatus() === "active"}
       >
@@ -635,10 +638,13 @@ function TimelineRound({
             <div className="space-y-2">
               {entries.map((e) => (
                 <div key={e.workflowId} className="p-2 rounded-lg bg-muted/50 text-sm">
+                  <p className="font-medium text-xs text-muted-foreground mb-1">{e.label || e.workflowId}</p>
                   {e.deferred ? (
                     <p className="text-muted-foreground">{e.reason}</p>
+                  ) : e.sent > 0 ? (
+                    <p className="text-green-500">{e.sent} leads sent for enrichment (from {e.eligible || e.sent} eligible)</p>
                   ) : (
-                    <p className="text-green-500">{e.sent} channels sent for enrichment</p>
+                    <p className="text-muted-foreground">{e.reason || "No eligible leads found"}</p>
                   )}
                 </div>
               ))}
