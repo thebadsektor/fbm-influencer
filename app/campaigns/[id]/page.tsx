@@ -1011,6 +1011,15 @@ export default function CampaignDetailPage() {
                       {emailCount.withEmail} emails ({Math.round((emailCount.withEmail / emailCount.total) * 100)}%)
                     </button>
                   )}
+                  {emailCount && emailCount.withEmail > 0 && (
+                    <button
+                      onClick={() => setOutreachModalOpen(true)}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      <Send className="h-3 w-3" />
+                      Outreach
+                    </button>
+                  )}
                   {totalCost > 0 && <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />{totalCost.toFixed(2)}</span>}
                   <Badge variant={campaign.status === "completed" ? "default" : campaign.status === "failed" ? "destructive" : "secondary"} className="text-xs">
                     {campaign.status === "awaiting_approval" ? "planning next round" : campaign.status}

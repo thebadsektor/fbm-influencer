@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import {
   Mail,
   Loader2,
@@ -24,6 +25,15 @@ import {
   AlertCircle,
   Settings2,
   ExternalLink,
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
+  Link as LinkIcon,
+  Undo2,
+  Redo2,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 interface Lead {
@@ -77,8 +87,20 @@ export function OutreachModal({
   const [regenerating, setRegenerating] = useState(false);
   const [sending, setSending] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
   const [prompt, setPrompt] = useState("");
+
+  // WYSIWYG state
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [, forceRender] = useState(0);
+  const [canvasTheme, setCanvasTheme] = useState<"light" | "dark">(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("email-composer-theme") as "light" | "dark") || "light";
+    }
+    return "light";
+  });
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [promptLoading, setPromptLoading] = useState(false);
   const [editSubject, setEditSubject] = useState("");
   const [editBody, setEditBody] = useState("");
@@ -168,16 +190,65 @@ export function OutreachModal({
     setRegenerating(false);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (subject?: string, body?: string) => {
     if (!draft) return;
     setSaving(true);
+    setSaved(false);
     await fetch(`/api/campaigns/${campaignId}/outreach/${draft.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subject: editSubject, body: editBody }),
+      body: JSON.stringify({ subject: subject ?? editSubject, body: body ?? editBody }),
     });
     setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
+
+  // Debounced auto-save
+  const debouncedSave = useCallback((subject: string, body: string) => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      handleSave(subject, body);
+    }, 1500);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, campaignId]);
+
+  // WYSIWYG helpers
+  const execCommand = useCallback((command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+    forceRender((n) => n + 1);
+    // Trigger auto-save after formatting change
+    if (editorRef.current) {
+      const html = editorRef.current.innerHTML;
+      setEditBody(html);
+      debouncedSave(editSubject, html);
+    }
+  }, [debouncedSave, editSubject]);
+
+  const isCommandActive = useCallback((command: string) => {
+    try { return document.queryCommandState(command); } catch { return false; }
+  }, []);
+
+  const addLink = () => {
+    const url = window.prompt("Enter URL:");
+    if (url) execCommand("createLink", url);
+  };
+
+  const toggleCanvasTheme = () => {
+    setCanvasTheme((prev) => {
+      const next = prev === "light" ? "dark" : "light";
+      localStorage.setItem("email-composer-theme", next);
+      return next;
+    });
+  };
+
+  // Set editor content when draft changes
+  useEffect(() => {
+    if (editorRef.current && editBody && editorRef.current.innerHTML !== editBody) {
+      editorRef.current.innerHTML = editBody;
+    }
+  }, [draft?.id]); // Only on draft change, not on every editBody change
 
   const handleSend = async (draftIds: string[]) => {
     setSending(true);
@@ -328,8 +399,7 @@ export function OutreachModal({
                     <span className="text-muted-foreground text-sm w-10">Subj:</span>
                     <Input
                       value={editSubject}
-                      onChange={(e) => setEditSubject(e.target.value)}
-                      onBlur={handleSave}
+                      onChange={(e) => { setEditSubject(e.target.value); debouncedSave(e.target.value, editBody); }}
                       className="h-8 text-sm"
                       placeholder="Subject line..."
                     />
@@ -343,14 +413,58 @@ export function OutreachModal({
                   </div>
                 </div>
 
-                {/* Email body */}
-                <div className="flex-1 overflow-y-auto p-4">
-                  <Textarea
-                    value={editBody}
-                    onChange={(e) => setEditBody(e.target.value)}
-                    onBlur={handleSave}
-                    className="min-h-[300px] text-sm leading-relaxed resize-none border-none focus-visible:ring-0 p-0"
-                    placeholder="Email body..."
+                {/* WYSIWYG Toolbar */}
+                <div className="flex items-center gap-0.5 px-4 py-1.5 border-b border-border/50">
+                  <Button variant="ghost" size="icon-sm" onMouseDown={(e) => { e.preventDefault(); execCommand("bold"); }} className={isCommandActive("bold") ? "bg-muted" : ""}>
+                    <Bold className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon-sm" onMouseDown={(e) => { e.preventDefault(); execCommand("italic"); }} className={isCommandActive("italic") ? "bg-muted" : ""}>
+                    <Italic className="h-3.5 w-3.5" />
+                  </Button>
+                  <Separator orientation="vertical" className="h-4 mx-1" />
+                  <Button variant="ghost" size="icon-sm" onMouseDown={(e) => { e.preventDefault(); execCommand("insertUnorderedList"); }}>
+                    <List className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon-sm" onMouseDown={(e) => { e.preventDefault(); execCommand("insertOrderedList"); }}>
+                    <ListOrdered className="h-3.5 w-3.5" />
+                  </Button>
+                  <Separator orientation="vertical" className="h-4 mx-1" />
+                  <Button variant="ghost" size="icon-sm" onMouseDown={(e) => { e.preventDefault(); addLink(); }}>
+                    <LinkIcon className="h-3.5 w-3.5" />
+                  </Button>
+                  <Separator orientation="vertical" className="h-4 mx-1" />
+                  <Button variant="ghost" size="icon-sm" onMouseDown={(e) => { e.preventDefault(); execCommand("undo"); }}>
+                    <Undo2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon-sm" onMouseDown={(e) => { e.preventDefault(); execCommand("redo"); }}>
+                    <Redo2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon-sm" className="ml-auto" onClick={toggleCanvasTheme} title={canvasTheme === "light" ? "Dark preview" : "Light preview"}>
+                    {canvasTheme === "light" ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+
+                {/* Email body — WYSIWYG contentEditable */}
+                <div className={`flex-1 overflow-y-auto transition-colors ${
+                  canvasTheme === "light" ? "bg-white" : "bg-background"
+                }`}>
+                  <div
+                    ref={editorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    className={`prose prose-sm max-w-none min-h-[300px] px-6 py-4 focus:outline-none text-sm leading-relaxed ${
+                      canvasTheme === "light"
+                        ? "text-gray-900 prose-headings:text-gray-900 prose-p:text-gray-900 prose-a:text-blue-600"
+                        : "prose-invert text-foreground"
+                    }`}
+                    onInput={() => {
+                      forceRender((n) => n + 1);
+                      if (editorRef.current) {
+                        const html = editorRef.current.innerHTML;
+                        setEditBody(html);
+                        debouncedSave(editSubject, html);
+                      }
+                    }}
                   />
                 </div>
 
@@ -366,7 +480,8 @@ export function OutreachModal({
                       Regenerate
                     </Button>
                   </div>
-                  {saving && <span className="text-xs text-muted-foreground">Saving...</span>}
+                  {saving && <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>}
+                  {saved && !saving && <span className="text-xs text-green-500">Saved</span>}
                 </div>
               </>
             ) : (
