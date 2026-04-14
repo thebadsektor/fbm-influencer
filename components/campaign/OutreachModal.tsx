@@ -34,7 +34,10 @@ import {
   Redo2,
   Sun,
   Moon,
+  LayoutDashboard,
+  PenLine,
 } from "lucide-react";
+import { OutreachDashboard } from "@/components/campaign/OutreachDashboard";
 
 interface Lead {
   id: string;
@@ -75,6 +78,7 @@ export function OutreachModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const [view, setView] = useState<"dashboard" | "compose">("dashboard");
   const [leads, setLeads] = useState<Lead[]>([]);
   const [total, setTotal] = useState(0);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
@@ -306,11 +310,33 @@ export function OutreachModal({
       <DialogContent className="max-w-[95vw] w-full h-[90vh] flex flex-col p-0" showCloseButton={false}>
         <DialogHeader className="px-6 pt-5 pb-0">
           <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
-              Outreach
-              <span className="text-sm font-normal text-muted-foreground">{total} qualified leads</span>
-            </DialogTitle>
+            <div className="flex items-center gap-4">
+              <DialogTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5" />
+                Outreach
+                <span className="text-sm font-normal text-muted-foreground">{total} qualified leads</span>
+              </DialogTitle>
+              <div className="inline-flex rounded-md border bg-muted/40 p-0.5">
+                <button
+                  onClick={() => setView("dashboard")}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-sm flex items-center gap-1.5 transition-colors ${
+                    view === "dashboard" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <LayoutDashboard className="h-3.5 w-3.5" />
+                  Dashboard
+                </button>
+                <button
+                  onClick={() => setView("compose")}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-sm flex items-center gap-1.5 transition-colors ${
+                    view === "compose" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <PenLine className="h-3.5 w-3.5" />
+                  Compose
+                </button>
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={() => { setShowPrompt(!showPrompt); if (!showPrompt && !prompt) loadPrompt(); }}>
                 <Settings2 className="h-4 w-4 mr-1" /> Prompt
@@ -325,15 +351,18 @@ export function OutreachModal({
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="flex gap-4 text-xs text-muted-foreground mt-2 pb-3">
-            {generating && (
-              <span className="text-primary animate-pulse">Generating drafts for {total - (statusCounts.total || 0)} leads... this may take a minute</span>
-            )}
-            {!generating && <span>{statusCounts.draft || 0} drafts</span>}
-            {!generating && <span>{statusCounts.sent || 0} sent</span>}
-            <span>{total - (statusCounts.total || 0)} without draft</span>
-          </div>
+          {/* Stats — shown only in compose mode (dashboard has its own) */}
+          {view === "compose" && (
+            <div className="flex gap-4 text-xs text-muted-foreground mt-2 pb-3">
+              {generating && (
+                <span className="text-primary animate-pulse">Generating drafts for {total - (statusCounts.total || 0)} leads... this may take a minute</span>
+              )}
+              {!generating && <span>{statusCounts.draft || 0} drafts</span>}
+              {!generating && <span>{statusCounts.sent || 0} sent</span>}
+              <span>{total - (statusCounts.total || 0)} without draft</span>
+            </div>
+          )}
+          {view === "dashboard" && <div className="pb-3" />}
         </DialogHeader>
 
         {/* Prompt editor (collapsible) */}
@@ -351,7 +380,33 @@ export function OutreachModal({
           </div>
         )}
 
-        {/* Split panel */}
+        {/* Dashboard view */}
+        {view === "dashboard" && (
+          <OutreachDashboard
+            campaignId={campaignId}
+            isGenerating={generating}
+            onGenerateAll={handleGenerateAll}
+            onOpenLead={(resultId) => {
+              setView("compose");
+              const lead = leads.find((l) => l.id === resultId);
+              if (lead) {
+                selectLead(lead);
+              } else {
+                // Lead not in current page — fetch its draft directly by resultId
+                setSelectedId(resultId);
+                fetch(`/api/campaigns/${campaignId}/outreach?page=1&limit=${perPage}`)
+                  .then((r) => r.json())
+                  .then((data) => {
+                    const found = data.results.find((l: Lead) => l.id === resultId);
+                    if (found?.draft) loadDraft(found.draft.id);
+                  });
+              }
+            }}
+          />
+        )}
+
+        {/* Compose view (split panel) */}
+        {view === "compose" && (
         <div className="flex-1 flex overflow-hidden">
           {/* Left: Lead list */}
           <div className="w-[340px] border-r flex flex-col">
@@ -509,6 +564,7 @@ export function OutreachModal({
             )}
           </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );
