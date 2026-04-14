@@ -25,7 +25,13 @@ Write a short, friendly, human-sounding email inviting them to collaborate. Rule
 5. Include a clear but soft call-to-action
 6. Keep the subject line short and curiosity-driven (not clickbait)
 
-Return ONLY valid JSON: {"subject": "...", "body": "..."}`;
+CRITICAL FORMAT RULE: The body MUST be valid HTML for a rich text editor. You MUST:
+- Use <p>...</p> for EACH paragraph (use 2-3 short paragraphs, not one wall of text)
+- Use <strong>...</strong> to bold key phrases (their content specialty, the collaboration type, brand name) — but sparingly, max 2-3 bold phrases
+- Do NOT use \\n or plain text line breaks — ONLY use <p> tags to separate paragraphs
+- Do NOT wrap everything in a single <p> — use multiple <p> tags
+
+Return ONLY valid JSON: {"subject": "...", "body": "<p>First paragraph</p><p>Second paragraph</p><p>Closing</p>"}`;
 
 interface OutreachResult {
   generated: number;
@@ -147,12 +153,18 @@ export async function generateOutreachDrafts(
 
         if (!parsed.subject || !parsed.body) throw new Error("Invalid response structure");
 
+        // Guarantee HTML — convert plain text if LLM ignored the format rule
+        let htmlBody = parsed.body;
+        if (!/<[a-z][\s\S]*>/i.test(htmlBody)) {
+          htmlBody = htmlBody.split(/\n\n+/).map((p: string) => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("");
+        }
+
         await prisma.emailDraft.create({
           data: {
             resultId: result.id,
             campaignId,
             subject: parsed.subject,
-            body: parsed.body,
+            body: htmlBody,
             status: "draft",
             promptUsed: prompt,
             provider,
@@ -228,6 +240,12 @@ export async function regenerateDraft(
   const text = await llmGenerate(provider || "openai", prompt, 512);
   const parsed = parseJsonFromLLM<{ subject: string; body: string }>(text);
 
+  // Guarantee HTML
+  let htmlBody = parsed.body;
+  if (!/<[a-z][\s\S]*>/i.test(htmlBody)) {
+    htmlBody = htmlBody.split(/\n\n+/).map((p: string) => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("");
+  }
+
   // Save previous version to history
   const previousVersions = (draft.previousVersions as unknown[] || []);
   previousVersions.push({
@@ -241,7 +259,7 @@ export async function regenerateDraft(
     where: { id: draftId },
     data: {
       subject: parsed.subject,
-      body: parsed.body,
+      body: htmlBody,
       version: draft.version + 1,
       previousVersions: JSON.parse(JSON.stringify(previousVersions)),
       promptUsed: prompt,

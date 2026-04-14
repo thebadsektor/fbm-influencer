@@ -120,6 +120,13 @@ export function OutreachModal({
 
   useEffect(() => { if (open) loadLeads(); }, [open, loadLeads]);
 
+  // Convert plain text to HTML if body doesn't contain HTML tags
+  const toHtml = (text: string) => {
+    if (!text) return "";
+    if (/<[a-z][\s\S]*>/i.test(text)) return text; // already HTML
+    return text.split(/\n\n+/).map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("");
+  };
+
   const loadDraft = useCallback(async (draftId: string) => {
     setDraftLoading(true);
     const res = await fetch(`/api/campaigns/${campaignId}/outreach/${draftId}`);
@@ -127,7 +134,7 @@ export function OutreachModal({
       const d = await res.json();
       setDraft(d);
       setEditSubject(d.subject);
-      setEditBody(d.body);
+      setEditBody(toHtml(d.body));
     }
     setDraftLoading(false);
   }, [campaignId]);
@@ -184,7 +191,7 @@ export function OutreachModal({
       const updated = await res.json();
       setDraft({ ...draft, ...updated });
       setEditSubject(updated.subject);
-      setEditBody(updated.body);
+      setEditBody(toHtml(updated.body));
     }
     await loadLeads();
     setRegenerating(false);
@@ -296,7 +303,7 @@ export function OutreachModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-full h-[90vh] flex flex-col p-0">
+      <DialogContent className="max-w-[95vw] w-full h-[90vh] flex flex-col p-0" showCloseButton={false}>
         <DialogHeader className="px-6 pt-5 pb-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
@@ -310,15 +317,21 @@ export function OutreachModal({
               </Button>
               <Button variant="outline" size="sm" disabled={generating} onClick={handleGenerateAll}>
                 {generating ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
-                Generate All Drafts
+                {generating ? "Generating..." : "Generate All Drafts"}
+              </Button>
+              <Button variant="ghost" size="icon-sm" onClick={() => onOpenChange(false)}>
+                <span className="text-lg leading-none">&times;</span>
               </Button>
             </div>
           </div>
 
           {/* Stats */}
           <div className="flex gap-4 text-xs text-muted-foreground mt-2 pb-3">
-            <span>{statusCounts.draft || 0} drafts</span>
-            <span>{statusCounts.sent || 0} sent</span>
+            {generating && (
+              <span className="text-primary animate-pulse">Generating drafts for {total - (statusCounts.total || 0)} leads... this may take a minute</span>
+            )}
+            {!generating && <span>{statusCounts.draft || 0} drafts</span>}
+            {!generating && <span>{statusCounts.sent || 0} sent</span>}
             <span>{total - (statusCounts.total || 0)} without draft</span>
           </div>
         </DialogHeader>
