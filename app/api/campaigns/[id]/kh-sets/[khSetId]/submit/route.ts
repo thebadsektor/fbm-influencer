@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { getRequiredUser } from "@/lib/auth-helpers";
+import { getRequiredUser, isAdmin } from "@/lib/auth-helpers";
 import { khSetSubmitSchema, parseBody } from "@/lib/validations";
 import { publishDiscoveryEvent } from "@/lib/redis";
 
@@ -12,7 +12,7 @@ export async function POST(
   const { id, khSetId } = await params;
 
   // Verify campaign ownership
-  const campaign = await prisma.campaign.findFirst({ where: { id, userId: user.id } });
+  const campaign = await prisma.campaign.findFirst({ where: isAdmin(user) ? { id } : { id, userId: user.id } });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const raw = await req.json();

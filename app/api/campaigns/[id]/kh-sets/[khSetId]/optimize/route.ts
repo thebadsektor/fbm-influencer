@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { llmGenerate, parseJsonFromLLM, LLMProvider } from "@/lib/llm";
-import { getRequiredUser } from "@/lib/auth-helpers";
+import { getRequiredUser, isAdmin } from "@/lib/auth-helpers";
 import { resolveApiKey } from "@/lib/credential-resolver";
 
 export async function POST(
@@ -12,7 +12,7 @@ export async function POST(
   const { id, khSetId } = await params;
 
   // Verify campaign ownership
-  const campaign = await prisma.campaign.findFirst({ where: { id, userId: user.id } });
+  const campaign = await prisma.campaign.findFirst({ where: isAdmin(user) ? { id } : { id, userId: user.id } });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   let provider: LLMProvider = "openai";

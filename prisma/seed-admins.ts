@@ -2,8 +2,9 @@ import { auth } from "../lib/auth";
 import prisma from "../lib/prisma";
 
 const ADMINS = [
-  { name: "Lee", email: "lee@fbm.com", password: "FBMDigest2026!" },
-  { name: "Hanna", email: "hanna@fbmd.com", password: "FBMDigest2026!" },
+  { name: "Lee", email: "lee@fbm.com", password: "FBMInfluencer2026!" },
+  { name: "Hanna", email: "hanna@fbm.com", password: "FBMInfluencer2026!" },
+  { name: "Test Admin", email: "test-admin@fbm.com", password: "FBMTestAdmin2026!" },
 ];
 
 async function main() {

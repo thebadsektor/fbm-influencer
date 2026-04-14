@@ -2,7 +2,7 @@ import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { LLMProvider } from "@/lib/llm";
 import { generateKHSet } from "@/lib/kh-generator";
-import { getRequiredUser } from "@/lib/auth-helpers";
+import { getRequiredUser, isAdmin } from "@/lib/auth-helpers";
 
 export async function GET(
   _req: NextRequest,
@@ -12,7 +12,7 @@ export async function GET(
   const { id } = await params;
 
   // Verify campaign ownership
-  const campaign = await prisma.campaign.findFirst({ where: { id, userId: user.id } });
+  const campaign = await prisma.campaign.findFirst({ where: isAdmin(user) ? { id } : { id, userId: user.id } });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const sets = await prisma.kHSet.findMany({
@@ -31,7 +31,7 @@ export async function POST(
   const { id } = await params;
 
   const campaign = await prisma.campaign.findFirst({
-    where: { id, userId: user.id },
+    where: isAdmin(user) ? { id } : { id, userId: user.id },
     include: { documents: true },
   });
   if (!campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });

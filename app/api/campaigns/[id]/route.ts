@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { getRequiredUser } from "@/lib/auth-helpers";
+import { getRequiredUser, isAdmin } from "@/lib/auth-helpers";
 import { campaignPatchSchema, parseBody } from "@/lib/validations";
 import { checkKHSetCompletion } from "@/lib/completion-detector";
 
@@ -12,9 +12,10 @@ export async function GET(
   const { id } = await params;
 
   const campaign = await prisma.campaign.findFirst({
-    where: { id, userId: user.id },
+    where: isAdmin(user) ? { id } : { id, userId: user.id },
     include: {
       documents: true,
+      user: { select: { name: true, email: true } },
       khSets: {
         orderBy: { createdAt: "asc" },
         include: { _count: { select: { results: true } } },
@@ -37,7 +38,7 @@ export async function GET(
 
   // Re-fetch after potential status changes from completion check
   const refreshed = await prisma.campaign.findFirst({
-    where: { id, userId: user.id },
+    where: isAdmin(user) ? { id } : { id, userId: user.id },
     include: {
       documents: true,
       khSets: { orderBy: { createdAt: "asc" }, include: { _count: { select: { results: true } } } },
@@ -56,7 +57,7 @@ export async function PATCH(
   const { id } = await params;
 
   // Verify ownership
-  const existing = await prisma.campaign.findFirst({ where: { id, userId: user.id } });
+  const existing = await prisma.campaign.findFirst({ where: isAdmin(user) ? { id } : { id, userId: user.id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const raw = await req.json();
@@ -84,7 +85,7 @@ export async function DELETE(
   const user = await getRequiredUser();
   const { id } = await params;
 
-  const existing = await prisma.campaign.findFirst({ where: { id, userId: user.id } });
+  const existing = await prisma.campaign.findFirst({ where: isAdmin(user) ? { id } : { id, userId: user.id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.campaign.delete({ where: { id } });

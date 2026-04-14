@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { getRequiredUser } from "@/lib/auth-helpers";
+import { getRequiredUser, isAdmin } from "@/lib/auth-helpers";
 
 /**
  * Get detailed enrichment data: enriched contacts, attempted contacts,
@@ -16,7 +16,7 @@ export async function GET(
   const tab = url.searchParams.get("tab") || "enriched"; // enriched | attempted | insights
 
   const campaign = await prisma.campaign.findFirst({
-    where: { id, userId: user.id },
+    where: isAdmin(user) ? { id } : { id, userId: user.id },
     select: { id: true },
   });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });

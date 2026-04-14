@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/app/generated/prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { getRequiredUser } from "@/lib/auth-helpers";
+import { getRequiredUser, isAdmin } from "@/lib/auth-helpers";
 
 const COST_PER_CHANNEL = 0.005; // Conservative estimate for Apify dataovercoffee actor
 const N8N_ENRICHMENT_WEBHOOK_ID = process.env.N8N_ENRICHMENT_WEBHOOK_ID || "youtube-email-enrichment";
@@ -29,7 +29,7 @@ export async function POST(
   const confirm = body.confirm === true;
 
   const campaign = await prisma.campaign.findFirst({
-    where: { id, userId: user.id },
+    where: isAdmin(user) ? { id } : { id, userId: user.id },
     include: { khSets: { select: { id: true } } },
   });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });

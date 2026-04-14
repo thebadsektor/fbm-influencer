@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { getRequiredUser } from "@/lib/auth-helpers";
+import { getRequiredUser, isAdmin } from "@/lib/auth-helpers";
 import { ENRICHMENT_WORKFLOWS } from "@/lib/constants-influencer";
 
 /**
@@ -15,7 +15,7 @@ export async function GET(
   const { id } = await params;
 
   const campaign = await prisma.campaign.findFirst({
-    where: { id, userId: user.id },
+    where: isAdmin(user) ? { id } : { id, userId: user.id },
     select: { id: true, enrichmentBudget: true },
   });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });

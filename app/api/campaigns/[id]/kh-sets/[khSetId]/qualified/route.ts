@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { getRequiredUser } from "@/lib/auth-helpers";
+import { getRequiredUser, isAdmin } from "@/lib/auth-helpers";
 
 /**
  * Get qualified leads for a KH set — creators with campaignFitScore >= threshold.
@@ -16,7 +16,7 @@ export async function GET(
   const page = Number(url.searchParams.get("page") || 1);
   const limit = Math.min(Number(url.searchParams.get("limit") || 25), 100);
 
-  const campaign = await prisma.campaign.findFirst({ where: { id, userId: user.id } });
+  const campaign = await prisma.campaign.findFirst({ where: isAdmin(user) ? { id } : { id, userId: user.id } });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const [results, total] = await Promise.all([

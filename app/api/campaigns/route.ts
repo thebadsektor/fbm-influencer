@@ -13,9 +13,12 @@ export async function GET() {
   const user = await getRequiredUser();
 
   const campaigns = await prisma.campaign.findMany({
-    where: { userId: user.id },
+    where: isAdmin(user) ? {} : { userId: user.id },
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { khSets: true, documents: true } } },
+    include: {
+      _count: { select: { khSets: true, documents: true } },
+      user: { select: { name: true } },
+    },
   });
   return NextResponse.json(campaigns);
 }

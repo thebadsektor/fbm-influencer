@@ -924,7 +924,12 @@ export default function CampaignDetailPage() {
                 </h1>
               )}
               {!scrolled && (
-                <p className="text-lg text-muted-foreground mt-1">{campaign.brandNiche} &middot; {campaign.marketingGoal}</p>
+                <p className="text-lg text-muted-foreground mt-1">
+                  {campaign.brandNiche} &middot; {campaign.marketingGoal}
+                  {(campaign as unknown as { user?: { name: string } }).user?.name && (
+                    <span className="text-sm"> &middot; by {(campaign as unknown as { user: { name: string } }).user.name}</span>
+                  )}
+                </p>
               )}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0 ml-4">

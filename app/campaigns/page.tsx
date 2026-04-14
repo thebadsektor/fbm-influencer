@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Megaphone, FileText, Hash, Users } from "lucide-react";
-import { getRequiredUser } from "@/lib/auth-helpers";
+import { getRequiredUser, isAdmin } from "@/lib/auth-helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -12,9 +12,12 @@ export default async function CampaignsPage() {
   const user = await getRequiredUser();
 
   const campaigns = await prisma.campaign.findMany({
-    where: { userId: user.id },
+    where: isAdmin(user) ? {} : { userId: user.id },
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { khSets: true, documents: true } } },
+    include: {
+      _count: { select: { khSets: true, documents: true } },
+      user: { select: { name: true } },
+    },
   });
 
   return (
@@ -84,6 +87,9 @@ export default async function CampaignsPage() {
                     </span>
                   </div>
                   <p className="text-sm leading-none font-medium text-muted-foreground/60 mt-3">
+                    {(c as unknown as { user?: { name: string } }).user?.name && (
+                      <span>by {(c as unknown as { user: { name: string } }).user.name} &middot; </span>
+                    )}
                     {new Date(c.createdAt).toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",

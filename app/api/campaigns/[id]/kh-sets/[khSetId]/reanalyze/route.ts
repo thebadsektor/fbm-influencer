@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/app/generated/prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { getRequiredUser } from "@/lib/auth-helpers";
+import { getRequiredUser, isAdmin } from "@/lib/auth-helpers";
 import { profileBatch, type CampaignContext } from "@/lib/affinity-profiler";
 import { analyzeIteration } from "@/lib/iteration-analyzer";
 import { publishDiscoveryEvent } from "@/lib/redis";
@@ -24,7 +24,7 @@ export async function POST(
   const enrichmentOnly = body.enrichmentOnly === true;
 
   const campaign = await prisma.campaign.findFirst({
-    where: { id, userId: user.id },
+    where: isAdmin(user) ? { id } : { id, userId: user.id },
     include: { iterations: { orderBy: { iterationNumber: "asc" } } },
   });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });

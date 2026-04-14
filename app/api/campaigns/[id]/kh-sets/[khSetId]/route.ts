@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { getRequiredUser } from "@/lib/auth-helpers";
+import { getRequiredUser, isAdmin } from "@/lib/auth-helpers";
 import { checkKHSetCompletion } from "@/lib/completion-detector";
 
 type Params = { params: Promise<{ id: string; khSetId: string }> };
@@ -10,7 +10,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const { id, khSetId } = await params;
 
   // Verify campaign ownership
-  const campaign = await prisma.campaign.findFirst({ where: { id, userId: user.id } });
+  const campaign = await prisma.campaign.findFirst({ where: isAdmin(user) ? { id } : { id, userId: user.id } });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // Check for completion on each poll (stabilization-based)
@@ -59,7 +59,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { id, khSetId } = await params;
 
   // Verify campaign ownership
-  const campaign = await prisma.campaign.findFirst({ where: { id, userId: user.id } });
+  const campaign = await prisma.campaign.findFirst({ where: isAdmin(user) ? { id } : { id, userId: user.id } });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const existing = await prisma.kHSet.findUnique({ where: { id: khSetId } });
@@ -81,7 +81,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const user = await getRequiredUser();
   const { id, khSetId } = await params;
 
-  const campaign = await prisma.campaign.findFirst({ where: { id, userId: user.id } });
+  const campaign = await prisma.campaign.findFirst({ where: isAdmin(user) ? { id } : { id, userId: user.id } });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const existing = await prisma.kHSet.findUnique({ where: { id: khSetId } });
