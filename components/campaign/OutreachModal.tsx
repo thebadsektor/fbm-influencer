@@ -465,7 +465,7 @@ export function OutreachModal({
                     ref={editorRef}
                     contentEditable
                     suppressContentEditableWarning
-                    className={`prose prose-sm max-w-none min-h-[300px] px-6 py-4 focus:outline-none text-sm leading-relaxed ${
+                    className={`prose prose-sm max-w-none min-h-[300px] px-6 py-4 focus:outline-none text-sm leading-relaxed [&_p]:my-3 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 ${
                       canvasTheme === "light"
                         ? "text-gray-900 prose-headings:text-gray-900 prose-p:text-gray-900 prose-a:text-blue-600"
                         : "prose-invert text-foreground"
