@@ -123,6 +123,11 @@ export type Result = Prisma.ResultModel
  */
 export type EnrichmentRun = Prisma.EnrichmentRunModel
 /**
+ * Model EmailDraft
+ * 
+ */
+export type EmailDraft = Prisma.EmailDraftModel
+/**
  * Model CampaignIteration
  * 
  */

@@ -434,6 +434,7 @@ export type ResultWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"Result"> | Date | string
   khSet?: Prisma.XOR<Prisma.KHSetScalarRelationFilter, Prisma.KHSetWhereInput>
   enrichmentRuns?: Prisma.EnrichmentRunListRelationFilter
+  emailDrafts?: Prisma.EmailDraftListRelationFilter
 }
 
 export type ResultOrderByWithRelationInput = {
@@ -469,6 +470,7 @@ export type ResultOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   khSet?: Prisma.KHSetOrderByWithRelationInput
   enrichmentRuns?: Prisma.EnrichmentRunOrderByRelationAggregateInput
+  emailDrafts?: Prisma.EmailDraftOrderByRelationAggregateInput
 }
 
 export type ResultWhereUniqueInput = Prisma.AtLeast<{
@@ -507,6 +509,7 @@ export type ResultWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"Result"> | Date | string
   khSet?: Prisma.XOR<Prisma.KHSetScalarRelationFilter, Prisma.KHSetWhereInput>
   enrichmentRuns?: Prisma.EnrichmentRunListRelationFilter
+  emailDrafts?: Prisma.EmailDraftListRelationFilter
 }, "id">
 
 export type ResultOrderByWithAggregationInput = {
@@ -615,6 +618,7 @@ export type ResultCreateInput = {
   createdAt?: Date | string
   khSet: Prisma.KHSetCreateNestedOneWithoutResultsInput
   enrichmentRuns?: Prisma.EnrichmentRunCreateNestedManyWithoutResultInput
+  emailDrafts?: Prisma.EmailDraftCreateNestedManyWithoutResultInput
 }
 
 export type ResultUncheckedCreateInput = {
@@ -649,6 +653,7 @@ export type ResultUncheckedCreateInput = {
   campaignFitScore?: number | null
   createdAt?: Date | string
   enrichmentRuns?: Prisma.EnrichmentRunUncheckedCreateNestedManyWithoutResultInput
+  emailDrafts?: Prisma.EmailDraftUncheckedCreateNestedManyWithoutResultInput
 }
 
 export type ResultUpdateInput = {
@@ -683,6 +688,7 @@ export type ResultUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   khSet?: Prisma.KHSetUpdateOneRequiredWithoutResultsNestedInput
   enrichmentRuns?: Prisma.EnrichmentRunUpdateManyWithoutResultNestedInput
+  emailDrafts?: Prisma.EmailDraftUpdateManyWithoutResultNestedInput
 }
 
 export type ResultUncheckedUpdateInput = {
@@ -717,6 +723,7 @@ export type ResultUncheckedUpdateInput = {
   campaignFitScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   enrichmentRuns?: Prisma.EnrichmentRunUncheckedUpdateManyWithoutResultNestedInput
+  emailDrafts?: Prisma.EmailDraftUncheckedUpdateManyWithoutResultNestedInput
 }
 
 export type ResultCreateManyInput = {
@@ -1003,6 +1010,20 @@ export type ResultUpdateOneRequiredWithoutEnrichmentRunsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ResultUpdateToOneWithWhereWithoutEnrichmentRunsInput, Prisma.ResultUpdateWithoutEnrichmentRunsInput>, Prisma.ResultUncheckedUpdateWithoutEnrichmentRunsInput>
 }
 
+export type ResultCreateNestedOneWithoutEmailDraftsInput = {
+  create?: Prisma.XOR<Prisma.ResultCreateWithoutEmailDraftsInput, Prisma.ResultUncheckedCreateWithoutEmailDraftsInput>
+  connectOrCreate?: Prisma.ResultCreateOrConnectWithoutEmailDraftsInput
+  connect?: Prisma.ResultWhereUniqueInput
+}
+
+export type ResultUpdateOneRequiredWithoutEmailDraftsNestedInput = {
+  create?: Prisma.XOR<Prisma.ResultCreateWithoutEmailDraftsInput, Prisma.ResultUncheckedCreateWithoutEmailDraftsInput>
+  connectOrCreate?: Prisma.ResultCreateOrConnectWithoutEmailDraftsInput
+  upsert?: Prisma.ResultUpsertWithoutEmailDraftsInput
+  connect?: Prisma.ResultWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ResultUpdateToOneWithWhereWithoutEmailDraftsInput, Prisma.ResultUpdateWithoutEmailDraftsInput>, Prisma.ResultUncheckedUpdateWithoutEmailDraftsInput>
+}
+
 export type ResultCreateWithoutKhSetInput = {
   id?: string
   platform: string
@@ -1034,6 +1055,7 @@ export type ResultCreateWithoutKhSetInput = {
   campaignFitScore?: number | null
   createdAt?: Date | string
   enrichmentRuns?: Prisma.EnrichmentRunCreateNestedManyWithoutResultInput
+  emailDrafts?: Prisma.EmailDraftCreateNestedManyWithoutResultInput
 }
 
 export type ResultUncheckedCreateWithoutKhSetInput = {
@@ -1067,6 +1089,7 @@ export type ResultUncheckedCreateWithoutKhSetInput = {
   campaignFitScore?: number | null
   createdAt?: Date | string
   enrichmentRuns?: Prisma.EnrichmentRunUncheckedCreateNestedManyWithoutResultInput
+  emailDrafts?: Prisma.EmailDraftUncheckedCreateNestedManyWithoutResultInput
 }
 
 export type ResultCreateOrConnectWithoutKhSetInput = {
@@ -1162,6 +1185,7 @@ export type ResultCreateWithoutEnrichmentRunsInput = {
   campaignFitScore?: number | null
   createdAt?: Date | string
   khSet: Prisma.KHSetCreateNestedOneWithoutResultsInput
+  emailDrafts?: Prisma.EmailDraftCreateNestedManyWithoutResultInput
 }
 
 export type ResultUncheckedCreateWithoutEnrichmentRunsInput = {
@@ -1195,6 +1219,7 @@ export type ResultUncheckedCreateWithoutEnrichmentRunsInput = {
   affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   campaignFitScore?: number | null
   createdAt?: Date | string
+  emailDrafts?: Prisma.EmailDraftUncheckedCreateNestedManyWithoutResultInput
 }
 
 export type ResultCreateOrConnectWithoutEnrichmentRunsInput = {
@@ -1244,6 +1269,7 @@ export type ResultUpdateWithoutEnrichmentRunsInput = {
   campaignFitScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   khSet?: Prisma.KHSetUpdateOneRequiredWithoutResultsNestedInput
+  emailDrafts?: Prisma.EmailDraftUpdateManyWithoutResultNestedInput
 }
 
 export type ResultUncheckedUpdateWithoutEnrichmentRunsInput = {
@@ -1277,6 +1303,159 @@ export type ResultUncheckedUpdateWithoutEnrichmentRunsInput = {
   affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   campaignFitScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDrafts?: Prisma.EmailDraftUncheckedUpdateManyWithoutResultNestedInput
+}
+
+export type ResultCreateWithoutEmailDraftsInput = {
+  id?: string
+  platform: string
+  platformId?: string | null
+  creatorName?: string | null
+  creatorHandle?: string | null
+  profileUrl?: string | null
+  email?: string | null
+  emailSource?: string | null
+  emailType?: string | null
+  confidence?: string | null
+  followers?: string | null
+  engagementRate?: string | null
+  bio?: string | null
+  rawText?: string | null
+  hashtags?: string | null
+  crawlTargets?: string | null
+  verified?: boolean | null
+  avatar?: string | null
+  videoCount?: number | null
+  totalViews?: number | null
+  avgViews?: number | null
+  avgLikes?: number | null
+  topVideoViews?: number | null
+  scrapeHits?: number | null
+  recentActivity?: string | null
+  rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: number | null
+  createdAt?: Date | string
+  khSet: Prisma.KHSetCreateNestedOneWithoutResultsInput
+  enrichmentRuns?: Prisma.EnrichmentRunCreateNestedManyWithoutResultInput
+}
+
+export type ResultUncheckedCreateWithoutEmailDraftsInput = {
+  id?: string
+  khSetId: string
+  platform: string
+  platformId?: string | null
+  creatorName?: string | null
+  creatorHandle?: string | null
+  profileUrl?: string | null
+  email?: string | null
+  emailSource?: string | null
+  emailType?: string | null
+  confidence?: string | null
+  followers?: string | null
+  engagementRate?: string | null
+  bio?: string | null
+  rawText?: string | null
+  hashtags?: string | null
+  crawlTargets?: string | null
+  verified?: boolean | null
+  avatar?: string | null
+  videoCount?: number | null
+  totalViews?: number | null
+  avgViews?: number | null
+  avgLikes?: number | null
+  topVideoViews?: number | null
+  scrapeHits?: number | null
+  recentActivity?: string | null
+  rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: number | null
+  createdAt?: Date | string
+  enrichmentRuns?: Prisma.EnrichmentRunUncheckedCreateNestedManyWithoutResultInput
+}
+
+export type ResultCreateOrConnectWithoutEmailDraftsInput = {
+  where: Prisma.ResultWhereUniqueInput
+  create: Prisma.XOR<Prisma.ResultCreateWithoutEmailDraftsInput, Prisma.ResultUncheckedCreateWithoutEmailDraftsInput>
+}
+
+export type ResultUpsertWithoutEmailDraftsInput = {
+  update: Prisma.XOR<Prisma.ResultUpdateWithoutEmailDraftsInput, Prisma.ResultUncheckedUpdateWithoutEmailDraftsInput>
+  create: Prisma.XOR<Prisma.ResultCreateWithoutEmailDraftsInput, Prisma.ResultUncheckedCreateWithoutEmailDraftsInput>
+  where?: Prisma.ResultWhereInput
+}
+
+export type ResultUpdateToOneWithWhereWithoutEmailDraftsInput = {
+  where?: Prisma.ResultWhereInput
+  data: Prisma.XOR<Prisma.ResultUpdateWithoutEmailDraftsInput, Prisma.ResultUncheckedUpdateWithoutEmailDraftsInput>
+}
+
+export type ResultUpdateWithoutEmailDraftsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  platform?: Prisma.StringFieldUpdateOperationsInput | string
+  platformId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  creatorName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  creatorHandle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  profileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  confidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followers?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  engagementRate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  hashtags?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  crawlTargets?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  verified?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  videoCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgLikes?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  topVideoViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  scrapeHits?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  recentActivity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  khSet?: Prisma.KHSetUpdateOneRequiredWithoutResultsNestedInput
+  enrichmentRuns?: Prisma.EnrichmentRunUpdateManyWithoutResultNestedInput
+}
+
+export type ResultUncheckedUpdateWithoutEmailDraftsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  khSetId?: Prisma.StringFieldUpdateOperationsInput | string
+  platform?: Prisma.StringFieldUpdateOperationsInput | string
+  platformId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  creatorName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  creatorHandle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  profileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  confidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followers?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  engagementRate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  hashtags?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  crawlTargets?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  verified?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  videoCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  avgLikes?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  topVideoViews?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  scrapeHits?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  recentActivity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  affinityProfile?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  campaignFitScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  enrichmentRuns?: Prisma.EnrichmentRunUncheckedUpdateManyWithoutResultNestedInput
 }
 
 export type ResultCreateManyKhSetInput = {
@@ -1342,6 +1521,7 @@ export type ResultUpdateWithoutKhSetInput = {
   campaignFitScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   enrichmentRuns?: Prisma.EnrichmentRunUpdateManyWithoutResultNestedInput
+  emailDrafts?: Prisma.EmailDraftUpdateManyWithoutResultNestedInput
 }
 
 export type ResultUncheckedUpdateWithoutKhSetInput = {
@@ -1375,6 +1555,7 @@ export type ResultUncheckedUpdateWithoutKhSetInput = {
   campaignFitScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   enrichmentRuns?: Prisma.EnrichmentRunUncheckedUpdateManyWithoutResultNestedInput
+  emailDrafts?: Prisma.EmailDraftUncheckedUpdateManyWithoutResultNestedInput
 }
 
 export type ResultUncheckedUpdateManyWithoutKhSetInput = {
@@ -1416,10 +1597,12 @@ export type ResultUncheckedUpdateManyWithoutKhSetInput = {
 
 export type ResultCountOutputType = {
   enrichmentRuns: number
+  emailDrafts: number
 }
 
 export type ResultCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   enrichmentRuns?: boolean | ResultCountOutputTypeCountEnrichmentRunsArgs
+  emailDrafts?: boolean | ResultCountOutputTypeCountEmailDraftsArgs
 }
 
 /**
@@ -1437,6 +1620,13 @@ export type ResultCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Exten
  */
 export type ResultCountOutputTypeCountEnrichmentRunsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.EnrichmentRunWhereInput
+}
+
+/**
+ * ResultCountOutputType without action
+ */
+export type ResultCountOutputTypeCountEmailDraftsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.EmailDraftWhereInput
 }
 
 
@@ -1473,6 +1663,7 @@ export type ResultSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   createdAt?: boolean
   khSet?: boolean | Prisma.KHSetDefaultArgs<ExtArgs>
   enrichmentRuns?: boolean | Prisma.Result$enrichmentRunsArgs<ExtArgs>
+  emailDrafts?: boolean | Prisma.Result$emailDraftsArgs<ExtArgs>
   _count?: boolean | Prisma.ResultCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["result"]>
 
@@ -1581,6 +1772,7 @@ export type ResultOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
 export type ResultInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   khSet?: boolean | Prisma.KHSetDefaultArgs<ExtArgs>
   enrichmentRuns?: boolean | Prisma.Result$enrichmentRunsArgs<ExtArgs>
+  emailDrafts?: boolean | Prisma.Result$emailDraftsArgs<ExtArgs>
   _count?: boolean | Prisma.ResultCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ResultIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1595,6 +1787,7 @@ export type $ResultPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
   objects: {
     khSet: Prisma.$KHSetPayload<ExtArgs>
     enrichmentRuns: Prisma.$EnrichmentRunPayload<ExtArgs>[]
+    emailDrafts: Prisma.$EmailDraftPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2023,6 +2216,7 @@ export interface Prisma__ResultClient<T, Null = never, ExtArgs extends runtime.T
   readonly [Symbol.toStringTag]: "PrismaPromise"
   khSet<T extends Prisma.KHSetDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.KHSetDefaultArgs<ExtArgs>>): Prisma.Prisma__KHSetClient<runtime.Types.Result.GetResult<Prisma.$KHSetPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   enrichmentRuns<T extends Prisma.Result$enrichmentRunsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Result$enrichmentRunsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EnrichmentRunPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  emailDrafts<T extends Prisma.Result$emailDraftsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Result$emailDraftsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EmailDraftPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2499,6 +2693,30 @@ export type Result$enrichmentRunsArgs<ExtArgs extends runtime.Types.Extensions.I
   take?: number
   skip?: number
   distinct?: Prisma.EnrichmentRunScalarFieldEnum | Prisma.EnrichmentRunScalarFieldEnum[]
+}
+
+/**
+ * Result.emailDrafts
+ */
+export type Result$emailDraftsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the EmailDraft
+   */
+  select?: Prisma.EmailDraftSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the EmailDraft
+   */
+  omit?: Prisma.EmailDraftOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.EmailDraftInclude<ExtArgs> | null
+  where?: Prisma.EmailDraftWhereInput
+  orderBy?: Prisma.EmailDraftOrderByWithRelationInput | Prisma.EmailDraftOrderByWithRelationInput[]
+  cursor?: Prisma.EmailDraftWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.EmailDraftScalarFieldEnum | Prisma.EmailDraftScalarFieldEnum[]
 }
 
 /**

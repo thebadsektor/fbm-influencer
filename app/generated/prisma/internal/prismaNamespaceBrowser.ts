@@ -72,6 +72,7 @@ export const ModelName = {
   KHSet: 'KHSet',
   Result: 'Result',
   EnrichmentRun: 'EnrichmentRun',
+  EmailDraft: 'EmailDraft',
   CampaignIteration: 'CampaignIteration',
   Credential: 'Credential'
 } as const
@@ -323,6 +324,7 @@ export const CampaignScalarFieldEnum = {
   autoRun: 'autoRun',
   enrichmentBudget: 'enrichmentBudget',
   enrichAfterRounds: 'enrichAfterRounds',
+  outreachPrompt: 'outreachPrompt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -432,6 +434,26 @@ export const EnrichmentRunScalarFieldEnum = {
 } as const
 
 export type EnrichmentRunScalarFieldEnum = (typeof EnrichmentRunScalarFieldEnum)[keyof typeof EnrichmentRunScalarFieldEnum]
+
+
+export const EmailDraftScalarFieldEnum = {
+  id: 'id',
+  resultId: 'resultId',
+  campaignId: 'campaignId',
+  subject: 'subject',
+  body: 'body',
+  status: 'status',
+  promptUsed: 'promptUsed',
+  provider: 'provider',
+  version: 'version',
+  previousVersions: 'previousVersions',
+  sentAt: 'sentAt',
+  sendError: 'sendError',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type EmailDraftScalarFieldEnum = (typeof EmailDraftScalarFieldEnum)[keyof typeof EmailDraftScalarFieldEnum]
 
 
 export const CampaignIterationScalarFieldEnum = {

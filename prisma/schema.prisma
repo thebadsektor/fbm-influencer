@@ -270,9 +270,11 @@ model Campaign {
   autoRun             Boolean    @default(true)
   enrichmentBudget    Float?
   enrichAfterRounds   Int        @default(0)
+  outreachPrompt      String?    @db.Text
   documents           Document[]
   khSets              KHSet[]
   iterations          CampaignIteration[]
+  emailDrafts         EmailDraft[]
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
 
@@ -365,6 +367,7 @@ model Result {
   affinityProfile  Json?
   campaignFitScore Float?
   enrichmentRuns   EnrichmentRun[]
+  emailDrafts      EmailDraft[]
   createdAt        DateTime @default(now())
 
   @@map("result")
@@ -387,6 +390,29 @@ model EnrichmentRun {
   @@index([resultId, workflow])
   @@index([workflow, status])
   @@map("enrichment_run")
+}
+
+model EmailDraft {
+  id               String    @id @default(cuid())
+  resultId         String
+  result           Result    @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  campaignId       String
+  campaign         Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  subject          String
+  body             String    @db.Text
+  status           String    @default("draft")
+  promptUsed       String?   @db.Text
+  provider         String?
+  version          Int       @default(1)
+  previousVersions Json?
+  sentAt           DateTime?
+  sendError        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([resultId, campaignId])
+  @@index([campaignId, status])
+  @@map("email_draft")
 }
 
 model CampaignIteration {

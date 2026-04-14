@@ -29,6 +29,7 @@ import {
 import { TimelineStep, type StepStatus } from "@/components/campaign/TimelineStep";
 import { AutoPlayTimer } from "@/components/campaign/AutoPlayTimer";
 import { EnrichmentSheet } from "@/components/campaign/EnrichmentSheet";
+import { OutreachModal } from "@/components/campaign/OutreachModal";
 import type { LLMProvider } from "@/lib/llm";
 import { PROVIDER_LABELS } from "@/lib/llm";
 import { IDLE_MESSAGES } from "@/lib/idle-messages";
@@ -62,6 +63,7 @@ import {
   Clock,
   RotateCcw,
   Pencil,
+  Send,
 } from "lucide-react";
 
 // ── Types ──
@@ -330,6 +332,7 @@ function TimelineRound({
   results,
   onRefresh,
   autoRun,
+  onOpenOutreach,
 }: {
   khSet: KHSetData;
   iteration: IterationData | null;
@@ -339,6 +342,7 @@ function TimelineRound({
   results: Result[];
   onRefresh: () => void;
   autoRun: boolean;
+  onOpenOutreach?: () => void;
 }) {
   const [showAllCreators, setShowAllCreators] = useState(false);
   const [showQualified, setShowQualified] = useState(false);
@@ -678,7 +682,34 @@ function TimelineRound({
         )}
       </TimelineStep>
 
-      {/* Step 5: Optimization Plan */}
+      {/* Step 5: Outreach */}
+      <TimelineStep
+        title="Outreach"
+        status={(() => {
+          if (getEnrichmentStatus() !== "completed") return "pending" as const;
+          // Check if any drafts exist for this campaign
+          const hasDrafts = iteration?.analysisNarrative; // proxy: if analysis exists, outreach may have run
+          if (isLatest && ["awaiting_approval", "completed"].includes(campaignStatus)) return "completed" as const;
+          return "pending" as const;
+        })()}
+        icon={<Send className="h-4 w-4" />}
+        defaultExpanded={false}
+      >
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Generate and send personalized outreach emails to qualified leads.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenOutreach?.()}
+          >
+            <Mail className="h-3 w-3 mr-1" /> Open Outreach
+          </Button>
+        </div>
+      </TimelineStep>
+
+      {/* Step 6: Optimization Plan */}
       <TimelineStep
         title="Optimization Plan"
         status={getOptimizationStatus()}
@@ -761,6 +792,7 @@ export default function CampaignDetailPage() {
   const [nameValue, setNameValue] = useState("");
   const [emailCount, setEmailCount] = useState<{ total: number; withEmail: number } | null>(null);
   const [enrichmentSheetOpen, setEnrichmentSheetOpen] = useState(false);
+  const [outreachModalOpen, setOutreachModalOpen] = useState(false);
   const [roundResults, setRoundResults] = useState<Map<string, Result[]>>(new Map());
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -1019,6 +1051,7 @@ export default function CampaignDetailPage() {
                   results={roundResults.get(set.id) || []}
                   onRefresh={load}
                   autoRun={campaign.autoRun}
+                  onOpenOutreach={() => setOutreachModalOpen(true)}
                 />
               );
             })}
@@ -1097,6 +1130,12 @@ export default function CampaignDetailPage() {
         campaignId={campaign.id}
         open={enrichmentSheetOpen}
         onOpenChange={setEnrichmentSheetOpen}
+      />
+
+      <OutreachModal
+        campaignId={campaign.id}
+        open={outreachModalOpen}
+        onOpenChange={setOutreachModalOpen}
       />
     </div>
   );

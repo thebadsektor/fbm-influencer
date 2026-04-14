@@ -405,6 +405,7 @@ export const ModelName = {
   KHSet: 'KHSet',
   Result: 'Result',
   EnrichmentRun: 'EnrichmentRun',
+  EmailDraft: 'EmailDraft',
   CampaignIteration: 'CampaignIteration',
   Credential: 'Credential'
 } as const
@@ -422,7 +423,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "notification" | "discussion" | "discussionVote" | "discussionReport" | "discussionView" | "comment" | "commentVote" | "session" | "account" | "verification" | "feedback" | "feedbackReply" | "feedbackNotificationEmail" | "subscription" | "campaign" | "document" | "documentAnalysisCache" | "kHSet" | "result" | "enrichmentRun" | "campaignIteration" | "credential"
+    modelProps: "user" | "notification" | "discussion" | "discussionVote" | "discussionReport" | "discussionView" | "comment" | "commentVote" | "session" | "account" | "verification" | "feedback" | "feedbackReply" | "feedbackNotificationEmail" | "subscription" | "campaign" | "document" | "documentAnalysisCache" | "kHSet" | "result" | "enrichmentRun" | "emailDraft" | "campaignIteration" | "credential"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1980,6 +1981,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    EmailDraft: {
+      payload: Prisma.$EmailDraftPayload<ExtArgs>
+      fields: Prisma.EmailDraftFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.EmailDraftFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailDraftPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.EmailDraftFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailDraftPayload>
+        }
+        findFirst: {
+          args: Prisma.EmailDraftFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailDraftPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.EmailDraftFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailDraftPayload>
+        }
+        findMany: {
+          args: Prisma.EmailDraftFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailDraftPayload>[]
+        }
+        create: {
+          args: Prisma.EmailDraftCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailDraftPayload>
+        }
+        createMany: {
+          args: Prisma.EmailDraftCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.EmailDraftCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailDraftPayload>[]
+        }
+        delete: {
+          args: Prisma.EmailDraftDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailDraftPayload>
+        }
+        update: {
+          args: Prisma.EmailDraftUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailDraftPayload>
+        }
+        deleteMany: {
+          args: Prisma.EmailDraftDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.EmailDraftUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.EmailDraftUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailDraftPayload>[]
+        }
+        upsert: {
+          args: Prisma.EmailDraftUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailDraftPayload>
+        }
+        aggregate: {
+          args: Prisma.EmailDraftAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateEmailDraft>
+        }
+        groupBy: {
+          args: Prisma.EmailDraftGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EmailDraftGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.EmailDraftCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EmailDraftCountAggregateOutputType> | number
+        }
+      }
+    }
     CampaignIteration: {
       payload: Prisma.$CampaignIterationPayload<ExtArgs>
       fields: Prisma.CampaignIterationFieldRefs
@@ -2398,6 +2473,7 @@ export const CampaignScalarFieldEnum = {
   autoRun: 'autoRun',
   enrichmentBudget: 'enrichmentBudget',
   enrichAfterRounds: 'enrichAfterRounds',
+  outreachPrompt: 'outreachPrompt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -2507,6 +2583,26 @@ export const EnrichmentRunScalarFieldEnum = {
 } as const
 
 export type EnrichmentRunScalarFieldEnum = (typeof EnrichmentRunScalarFieldEnum)[keyof typeof EnrichmentRunScalarFieldEnum]
+
+
+export const EmailDraftScalarFieldEnum = {
+  id: 'id',
+  resultId: 'resultId',
+  campaignId: 'campaignId',
+  subject: 'subject',
+  body: 'body',
+  status: 'status',
+  promptUsed: 'promptUsed',
+  provider: 'provider',
+  version: 'version',
+  previousVersions: 'previousVersions',
+  sentAt: 'sentAt',
+  sendError: 'sendError',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type EmailDraftScalarFieldEnum = (typeof EmailDraftScalarFieldEnum)[keyof typeof EmailDraftScalarFieldEnum]
 
 
 export const CampaignIterationScalarFieldEnum = {
@@ -2803,6 +2899,7 @@ export type GlobalOmitConfig = {
   kHSet?: Prisma.KHSetOmit
   result?: Prisma.ResultOmit
   enrichmentRun?: Prisma.EnrichmentRunOmit
+  emailDraft?: Prisma.EmailDraftOmit
   campaignIteration?: Prisma.CampaignIterationOmit
   credential?: Prisma.CredentialOmit
 }
