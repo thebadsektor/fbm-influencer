@@ -26,6 +26,18 @@ export async function GET(
   });
   const khSetIds = khSets.map((s) => s.id);
 
+  // Proactive cleanup: expire stale "running" enrichment runs (> 30 min)
+  if (khSetIds.length > 0) {
+    await prisma.enrichmentRun.updateMany({
+      where: {
+        status: "running",
+        startedAt: { lt: new Date(Date.now() - 30 * 60 * 1000) },
+        result: { khSetId: { in: khSetIds } },
+      },
+      data: { status: "failed", error: "Timed out — no response from enrichment service" },
+    });
+  }
+
   if (khSetIds.length === 0) {
     return NextResponse.json({
       emailStats: { total: 0, withEmail: 0, percentage: 0, byPlatform: {} },
