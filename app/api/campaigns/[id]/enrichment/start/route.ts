@@ -1,19 +1,20 @@
 import prisma from "@/lib/prisma";
-import { Prisma } from "@/app/generated/prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequiredUser, isAdmin } from "@/lib/auth-helpers";
-
-const COST_PER_CHANNEL = 0.005; // Conservative estimate for Apify dataovercoffee actor
-const N8N_ENRICHMENT_WEBHOOK_ID = process.env.N8N_ENRICHMENT_WEBHOOK_ID || "youtube-email-enrichment";
+import { ENRICHMENT_WORKFLOWS } from "@/lib/constants-influencer";
 
 /**
- * Start email enrichment for a campaign's YouTube leads.
+ * Start a manual enrichment batch for a campaign, for any configured workflow
+ * (YouTube email scraper, TikTok Linktree, etc.). Resolves webhook URL + platform
+ * filter from ENRICHMENT_WORKFLOWS so this path stays in sync with the auto-trigger
+ * path in lib/enrichment-runner.ts. No env-var for webhook ID (previous behavior
+ * 404'd when the env var was unset or drifted from n8n).
  *
  * POST body:
  * {
- *   workflow: "youtube-email-scraper",
+ *   workflow: "youtube-email-scraper" | "tiktok-linktree-scraper",
  *   batchSize: number (default 50, max 200),
- *   confirm: boolean (must be true to actually run — first call without confirm returns estimate)
+ *   confirm: boolean (first call without confirm returns estimate only)
  * }
  */
 export async function POST(
@@ -24,9 +25,17 @@ export async function POST(
   const { id } = await params;
   const body = (await req.json()) as Record<string, unknown>;
 
-  const workflow = (body.workflow as string) || "youtube-email-scraper";
+  const workflowId = (body.workflow as string) || "youtube-email-scraper";
   const batchSize = Math.min(Number(body.batchSize) || 50, 200);
   const confirm = body.confirm === true;
+
+  const workflow = ENRICHMENT_WORKFLOWS.find((w) => w.id === workflowId);
+  if (!workflow) {
+    return NextResponse.json(
+      { error: `Unknown workflow "${workflowId}". Configured: ${ENRICHMENT_WORKFLOWS.map((w) => w.id).join(", ")}` },
+      { status: 400 }
+    );
+  }
 
   const campaign = await prisma.campaign.findFirst({
     where: isAdmin(user) ? { id } : { id, userId: user.id },
@@ -35,30 +44,36 @@ export async function POST(
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const khSetIds = campaign.khSets.map((s) => s.id);
+  const platformFilter = (workflow.platform as string) === "ALL"
+    ? {}
+    : { platform: { contains: workflow.platform, mode: "insensitive" as const } };
+  const inputType = (workflow as { inputType?: string }).inputType || "platformId";
 
-  // Find YouTube results without email and without a pending/completed enrichment run
+  // Find results without email and not already enriched successfully by this workflow
   const eligibleResults = await prisma.result.findMany({
     where: {
       khSetId: { in: khSetIds },
-      platform: { contains: "YOUTUBE", mode: "insensitive" },
+      ...platformFilter,
       OR: [{ email: null }, { email: "" }],
       NOT: {
         enrichmentRuns: {
           some: {
-            workflow,
-            status: { in: ["pending", "running", "completed"] },
+            workflow: workflowId,
+            // Don't retry runs that are in-flight or completed/empty (empty = we
+            // already confirmed the channel has no public email).
+            status: { in: ["pending", "running", "completed", "empty"] },
           },
         },
       },
+      ...(inputType === "crawlTargets"
+        ? { AND: [{ crawlTargets: { not: null } }, { NOT: { crawlTargets: "" } }] }
+        : workflow.platformIdPrefix
+          ? { platformId: { startsWith: workflow.platformIdPrefix } }
+          : {}),
     },
     select: {
-      id: true,
-      platformId: true,
-      creatorName: true,
-      creatorHandle: true,
-      followers: true,
-      crawlTargets: true,
-      campaignFitScore: true,
+      id: true, platformId: true, creatorName: true, creatorHandle: true,
+      followers: true, crawlTargets: true, campaignFitScore: true,
     },
     orderBy: [
       { campaignFitScore: { sort: "desc", nulls: "last" } },
@@ -67,104 +82,110 @@ export async function POST(
     take: batchSize,
   });
 
-  // Filter to only those with a valid platformId (YouTube channel ID)
-  const withChannelId = eligibleResults.filter(
-    (r) => r.platformId && r.platformId.startsWith("UC")
-  );
+  // For URL-based workflows, require a valid crawlTarget URL. For platformId-based,
+  // the platformIdPrefix filter above already narrowed; no extra filter needed.
+  const actionable = inputType === "crawlTargets"
+    ? eligibleResults.filter((r) => r.crawlTargets && r.crawlTargets.trim())
+    : eligibleResults;
 
-  if (withChannelId.length === 0) {
+  if (actionable.length === 0) {
     return NextResponse.json({
-      message: "No eligible YouTube channels found for enrichment",
+      message: `No eligible ${workflow.label} leads found for enrichment`,
       count: 0,
     });
   }
 
-  const estimatedCost = Math.round(withChannelId.length * COST_PER_CHANNEL * 1000) / 1000;
+  const estimatedCost = Math.round(actionable.length * workflow.costPerResult * 1000) / 1000;
 
-  // If not confirmed, return estimate only
   if (!confirm) {
     return NextResponse.json({
-      count: withChannelId.length,
+      count: actionable.length,
       estimatedCost,
-      channels: withChannelId.map((r) => ({
-        platformId: r.platformId,
-        name: r.creatorName,
-        handle: r.creatorHandle,
-      })),
-      message: `Ready to enrich ${withChannelId.length} YouTube channels. Estimated cost: ~$${estimatedCost.toFixed(2)}`,
+      message: `Ready to enrich ${actionable.length} ${workflow.label} leads. Estimated cost: ~$${estimatedCost.toFixed(2)}`,
     });
   }
 
-  // Create EnrichmentRun records
-  const enrichmentRunMap: Record<string, { enrichmentRunId: string; resultId: string }> = {};
+  const baseUrl = process.env.N8N_BASE_URL;
+  if (!baseUrl) {
+    return NextResponse.json({ error: "N8N_BASE_URL not configured" }, { status: 500 });
+  }
 
-  for (const result of withChannelId) {
+  // Create EnrichmentRun rows + build the runMap keyed by the identifier n8n will echo back
+  const enrichmentRunMap: Record<string, { enrichmentRunId: string; resultId: string }> = {};
+  let channels: string[] = [];
+  let startUrls: { url: string }[] = [];
+
+  for (const result of actionable) {
+    let key: string;
+    let input: Record<string, unknown>;
+    if (inputType === "crawlTargets") {
+      key = result.crawlTargets!.split(",")[0].trim();
+      input = { url: key, name: result.creatorName };
+      startUrls.push({ url: key });
+    } else {
+      if (!result.platformId) continue;
+      key = result.platformId;
+      input = { platformId: result.platformId, name: result.creatorName };
+      channels.push(result.platformId);
+    }
     const run = await prisma.enrichmentRun.create({
       data: {
         resultId: result.id,
-        workflow,
+        workflow: workflowId,
         status: "pending",
-        input: JSON.parse(JSON.stringify({ platformId: result.platformId, name: result.creatorName })),
+        input: JSON.parse(JSON.stringify(input)),
       },
     });
-    enrichmentRunMap[result.platformId!] = {
-      enrichmentRunId: run.id,
-      resultId: result.id,
-    };
+    enrichmentRunMap[key] = { enrichmentRunId: run.id, resultId: result.id };
   }
 
-  // POST to n8n webhook
-  const webhookId = N8N_ENRICHMENT_WEBHOOK_ID;
-  const baseUrl = process.env.N8N_BASE_URL;
-
-  if (!webhookId || !baseUrl) {
-    return NextResponse.json(
-      { error: "N8N_ENRICHMENT_WEBHOOK_ID or N8N_BASE_URL not configured" },
-      { status: 500 }
-    );
-  }
-
-  const channels = withChannelId.map((r) => r.platformId!);
-
-  const n8nPayload = {
-    channels,
+  const n8nPayload: Record<string, unknown> = {
     enrichmentRunMap,
     callbackUrl: `${process.env.APP_URL}/api/webhooks/n8n-enrichment`,
-    workflow,
+    workflow: workflowId,
   };
+  if (inputType === "crawlTargets") n8nPayload.urls = startUrls;
+  else n8nPayload.channels = channels;
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (process.env.N8N_API_KEY) headers["Authorization"] = `Bearer ${process.env.N8N_API_KEY}`;
 
   try {
-    const resp = await fetch(`${baseUrl}/webhook/${webhookId}`, {
+    const resp = await fetch(`${baseUrl}/webhook/${workflow.webhookPath}`, {
       method: "POST",
       headers,
       body: JSON.stringify(n8nPayload),
     });
 
     if (!resp.ok) {
+      // Clean up — don't leave rows in "pending" if n8n rejected the trigger
+      await prisma.enrichmentRun.updateMany({
+        where: { id: { in: Object.values(enrichmentRunMap).map((r) => r.enrichmentRunId) } },
+        data: { status: "failed", error: `n8n webhook returned ${resp.status}`, completedAt: new Date() },
+      });
       return NextResponse.json(
-        { error: `n8n webhook returned ${resp.status}` },
+        { error: `n8n webhook returned ${resp.status} (check workflow.webhookPath in lib/constants-influencer.ts matches the active n8n workflow)` },
         { status: 502 }
       );
     }
 
-    // Mark runs as "running"
     await prisma.enrichmentRun.updateMany({
-      where: {
-        id: { in: Object.values(enrichmentRunMap).map((r) => r.enrichmentRunId) },
-      },
+      where: { id: { in: Object.values(enrichmentRunMap).map((r) => r.enrichmentRunId) } },
       data: { status: "running" },
     });
 
+    const sentCount = inputType === "crawlTargets" ? startUrls.length : channels.length;
     return NextResponse.json({
       ok: true,
-      count: channels.length,
+      count: sentCount,
       estimatedCost,
-      message: `Enrichment started for ${channels.length} YouTube channels`,
+      message: `Enrichment started for ${sentCount} ${workflow.label} leads`,
     });
   } catch (err) {
+    await prisma.enrichmentRun.updateMany({
+      where: { id: { in: Object.values(enrichmentRunMap).map((r) => r.enrichmentRunId) } },
+      data: { status: "failed", error: `trigger error: ${err instanceof Error ? err.message : String(err)}`, completedAt: new Date() },
+    });
     return NextResponse.json(
       { error: `Failed to trigger n8n: ${err instanceof Error ? err.message : String(err)}` },
       { status: 500 }
