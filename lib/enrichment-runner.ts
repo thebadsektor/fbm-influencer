@@ -2,7 +2,15 @@ import prisma from "@/lib/prisma";
 import { publishDiscoveryEvent } from "@/lib/redis";
 import { ENRICHMENT_WORKFLOWS } from "@/lib/constants-influencer";
 
-const STALE_RUN_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
+// How long a "running" EnrichmentRun must sit before the sweep gives up on it.
+// Raised from 30 min → 2 h because:
+//   1. A callback arriving AFTER the sweep used to be silently discarded; the new
+//      webhook logic can now re-animate a swept row, so being too eager is only
+//      a UI problem, not a data-loss one.
+//   2. With chunked triggers (ENRICHMENT_CHUNK_SIZE) we no longer saturate
+//      Apify, so ~46 s avg scrape should land well inside this window.
+// If you want to disable the sweep entirely, set to a very large number.
+const STALE_RUN_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 export interface EnrichmentResult {
   workflowId: string;
@@ -41,11 +49,11 @@ export async function runEnrichmentStep(
       startedAt: { lt: new Date(Date.now() - STALE_RUN_THRESHOLD_MS) },
       result: { khSetId: { in: allKhSetIds } },
     },
-    data: { status: "failed", error: "Timed out — no response from enrichment service" },
+    data: { status: "failed", error: "Timed out — no callback from enrichment service (may still arrive; late callbacks will re-animate this row)" },
   });
   if (staleCount.count > 0) {
     await publishDiscoveryEvent(khSetId, "enrichment_cleanup",
-      `Cleared ${staleCount.count} stale enrichment runs (stuck > 30min). Those leads are now eligible for retry.`);
+      `Cleared ${staleCount.count} stale enrichment runs (>2h without callback). Those leads are eligible for retry; late callbacks can still deliver data.`);
   }
 
   await prisma.campaign.update({
@@ -69,7 +77,9 @@ export async function runEnrichmentStep(
         enrichmentRuns: {
           some: {
             workflow: workflow.id,
-            status: "completed" as const,
+            // Don't retry leads that already went through successfully (email found
+            // OR confirmed empty by the scraper). Failed/running rows remain eligible.
+            status: { in: ["completed", "empty"] },
           },
         },
       },
@@ -147,7 +157,9 @@ async function triggerN8nEnrichment(
         enrichmentRuns: {
           some: {
             workflow: workflow.id,
-            status: "completed" as const,
+            // Don't retry leads that already went through successfully (email found
+            // OR confirmed empty by the scraper). Failed/running rows remain eligible.
+            status: { in: ["completed", "empty"] },
           },
         },
       },
@@ -170,6 +182,17 @@ async function triggerN8nEnrichment(
   }
 }
 
+// Max leads per n8n webhook POST. Keeps Apify from being saturated to the point
+// where individual scrapes take > 30 min and get swept. Each scrape is ~46s, so
+// 50 per chunk caps n8n's in-flight queue at a manageable level.
+const ENRICHMENT_CHUNK_SIZE = 50;
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
+  return chunks;
+}
+
 async function triggerPlatformIdBasedEnrichment(
   eligible: { id: string; platformId: string | null; creatorName: string | null }[],
   workflow: typeof ENRICHMENT_WORKFLOWS[number],
@@ -177,35 +200,59 @@ async function triggerPlatformIdBasedEnrichment(
   const withValidId = eligible.filter((r) => r.platformId);
   if (withValidId.length === 0) return 0;
 
-  const enrichmentRunMap: Record<string, { enrichmentRunId: string; resultId: string }> = {};
-  for (const result of withValidId) {
-    const run = await prisma.enrichmentRun.create({
-      data: {
-        resultId: result.id,
-        workflow: workflow.id,
-        status: "running",
-        input: JSON.parse(JSON.stringify({ platformId: result.platformId, name: result.creatorName })),
-      },
-    });
-    enrichmentRunMap[result.platformId!] = { enrichmentRunId: run.id, resultId: result.id };
-  }
-
   const baseUrl = process.env.N8N_BASE_URL;
   if (!baseUrl) throw new Error("N8N_BASE_URL not configured");
 
-  const resp = await fetch(`${baseUrl}/webhook/${workflow.webhookPath}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(process.env.N8N_API_KEY ? { Authorization: `Bearer ${process.env.N8N_API_KEY}` } : {}) },
-    body: JSON.stringify({
-      channels: withValidId.map((r) => r.platformId!),
-      enrichmentRunMap,
-      callbackUrl: `${process.env.APP_URL}/api/webhooks/n8n-enrichment`,
-      workflow: workflow.id,
-    }),
-  });
+  let sentTotal = 0;
+  const chunks = chunk(withValidId, ENRICHMENT_CHUNK_SIZE);
 
-  if (!resp.ok) throw new Error(`n8n webhook returned ${resp.status}`);
-  return withValidId.length;
+  for (const batch of chunks) {
+    const enrichmentRunMap: Record<string, { enrichmentRunId: string; resultId: string }> = {};
+    for (const result of batch) {
+      const run = await prisma.enrichmentRun.create({
+        data: {
+          resultId: result.id,
+          workflow: workflow.id,
+          status: "running",
+          input: JSON.parse(JSON.stringify({ platformId: result.platformId, name: result.creatorName })),
+        },
+      });
+      enrichmentRunMap[result.platformId!] = { enrichmentRunId: run.id, resultId: result.id };
+    }
+
+    try {
+      const resp = await fetch(`${baseUrl}/webhook/${workflow.webhookPath}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(process.env.N8N_API_KEY ? { Authorization: `Bearer ${process.env.N8N_API_KEY}` } : {}) },
+        body: JSON.stringify({
+          channels: batch.map((r) => r.platformId!),
+          enrichmentRunMap,
+          callbackUrl: `${process.env.APP_URL}/api/webhooks/n8n-enrichment`,
+          workflow: workflow.id,
+        }),
+      });
+
+      if (!resp.ok) {
+        // Mark just THIS chunk's rows as failed with the actual trigger error so
+        // they're not left dangling as "running". Other chunks are unaffected.
+        await prisma.enrichmentRun.updateMany({
+          where: { id: { in: Object.values(enrichmentRunMap).map((m) => m.enrichmentRunId) } },
+          data: { status: "failed", error: `n8n webhook returned ${resp.status}`, completedAt: new Date() },
+        });
+        console.error(`[enrichment] chunk trigger failed: HTTP ${resp.status} for ${batch.length} ${workflow.id} leads`);
+        continue;
+      }
+      sentTotal += batch.length;
+    } catch (err) {
+      await prisma.enrichmentRun.updateMany({
+        where: { id: { in: Object.values(enrichmentRunMap).map((m) => m.enrichmentRunId) } },
+        data: { status: "failed", error: `trigger error: ${err instanceof Error ? err.message : String(err)}`, completedAt: new Date() },
+      });
+      console.error(`[enrichment] chunk trigger threw for ${batch.length} ${workflow.id} leads:`, err);
+    }
+  }
+
+  return sentTotal;
 }
 
 async function triggerUrlBasedEnrichment(
@@ -221,37 +268,58 @@ async function triggerUrlBasedEnrichment(
 
   if (withUrls.length === 0) return 0;
 
-  const enrichmentRunMap: Record<string, { enrichmentRunId: string; resultId: string }> = {};
-  const startUrls: { url: string }[] = [];
-
-  for (const result of withUrls) {
-    const url = result.urls[0];
-    const run = await prisma.enrichmentRun.create({
-      data: {
-        resultId: result.id,
-        workflow: workflow.id,
-        status: "running",
-        input: JSON.parse(JSON.stringify({ url, name: result.creatorName })),
-      },
-    });
-    enrichmentRunMap[url] = { enrichmentRunId: run.id, resultId: result.id };
-    startUrls.push({ url });
-  }
-
   const baseUrl = process.env.N8N_BASE_URL;
   if (!baseUrl) throw new Error("N8N_BASE_URL not configured");
 
-  const resp = await fetch(`${baseUrl}/webhook/${workflow.webhookPath}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(process.env.N8N_API_KEY ? { Authorization: `Bearer ${process.env.N8N_API_KEY}` } : {}) },
-    body: JSON.stringify({
-      urls: startUrls,
-      enrichmentRunMap,
-      callbackUrl: `${process.env.APP_URL}/api/webhooks/n8n-enrichment`,
-      workflow: workflow.id,
-    }),
-  });
+  let sentTotal = 0;
+  const chunks = chunk(withUrls, ENRICHMENT_CHUNK_SIZE);
 
-  if (!resp.ok) throw new Error(`n8n webhook returned ${resp.status}`);
-  return withUrls.length;
+  for (const batch of chunks) {
+    const enrichmentRunMap: Record<string, { enrichmentRunId: string; resultId: string }> = {};
+    const startUrls: { url: string }[] = [];
+    for (const result of batch) {
+      const url = result.urls[0];
+      const run = await prisma.enrichmentRun.create({
+        data: {
+          resultId: result.id,
+          workflow: workflow.id,
+          status: "running",
+          input: JSON.parse(JSON.stringify({ url, name: result.creatorName })),
+        },
+      });
+      enrichmentRunMap[url] = { enrichmentRunId: run.id, resultId: result.id };
+      startUrls.push({ url });
+    }
+
+    try {
+      const resp = await fetch(`${baseUrl}/webhook/${workflow.webhookPath}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(process.env.N8N_API_KEY ? { Authorization: `Bearer ${process.env.N8N_API_KEY}` } : {}) },
+        body: JSON.stringify({
+          urls: startUrls,
+          enrichmentRunMap,
+          callbackUrl: `${process.env.APP_URL}/api/webhooks/n8n-enrichment`,
+          workflow: workflow.id,
+        }),
+      });
+
+      if (!resp.ok) {
+        await prisma.enrichmentRun.updateMany({
+          where: { id: { in: Object.values(enrichmentRunMap).map((m) => m.enrichmentRunId) } },
+          data: { status: "failed", error: `n8n webhook returned ${resp.status}`, completedAt: new Date() },
+        });
+        console.error(`[enrichment] chunk trigger failed: HTTP ${resp.status} for ${batch.length} ${workflow.id} leads`);
+        continue;
+      }
+      sentTotal += batch.length;
+    } catch (err) {
+      await prisma.enrichmentRun.updateMany({
+        where: { id: { in: Object.values(enrichmentRunMap).map((m) => m.enrichmentRunId) } },
+        data: { status: "failed", error: `trigger error: ${err instanceof Error ? err.message : String(err)}`, completedAt: new Date() },
+      });
+      console.error(`[enrichment] chunk trigger threw for ${batch.length} ${workflow.id} leads:`, err);
+    }
+  }
+
+  return sentTotal;
 }

@@ -26,15 +26,16 @@ export async function GET(
   });
   const khSetIds = khSets.map((s) => s.id);
 
-  // Proactive cleanup: expire stale "running" enrichment runs (> 30 min)
+  // Proactive cleanup: expire stale "running" enrichment runs (> 2h).
+  // Late callbacks can still re-animate a swept row (see n8n-enrichment webhook).
   if (khSetIds.length > 0) {
     await prisma.enrichmentRun.updateMany({
       where: {
         status: "running",
-        startedAt: { lt: new Date(Date.now() - 30 * 60 * 1000) },
+        startedAt: { lt: new Date(Date.now() - 2 * 60 * 60 * 1000) },
         result: { khSetId: { in: khSetIds } },
       },
-      data: { status: "failed", error: "Timed out — no response from enrichment service" },
+      data: { status: "failed", error: "Timed out — no callback from enrichment service (may still arrive; late callbacks will re-animate this row)" },
     });
   }
 
@@ -47,14 +48,17 @@ export async function GET(
     });
   }
 
-  // Email stats by platform
+  // Email stats by platform. `percentage` divides by ALL scraped results
+  // (historical metric — capped by qualification rate). New fields below
+  // express the more useful ratios: attempted/eligible and emails/attempted.
   const results = await prisma.result.findMany({
     where: { khSetId: { in: khSetIds } },
-    select: { platform: true, email: true },
+    select: { platform: true, email: true, profileUrl: true },
   });
 
   const byPlatform: Record<string, { total: number; withEmail: number; percentage: number }> = {};
   let totalWithEmail = 0;
+  let totalEligible = 0;
 
   for (const r of results) {
     const p = r.platform || "unknown";
@@ -64,6 +68,7 @@ export async function GET(
       byPlatform[p].withEmail++;
       totalWithEmail++;
     }
+    if (r.profileUrl && (!r.email || !r.email.trim())) totalEligible++;
   }
   for (const p of Object.keys(byPlatform)) {
     byPlatform[p].percentage = byPlatform[p].total > 0
@@ -89,6 +94,7 @@ export async function GET(
     running: number;
     pending: number;
     failed: number;
+    empty: number;
     emailsFound: number;
     cost: number;
   }>();
@@ -102,6 +108,7 @@ export async function GET(
       running: 0,
       pending: 0,
       failed: 0,
+      empty: 0,
       emailsFound: 0,
       cost: 0,
     });
@@ -110,13 +117,12 @@ export async function GET(
   for (const run of allRuns) {
     let entry = workflowMap.get(run.workflow);
     if (!entry) {
-      entry = { workflow: run.workflow, label: run.workflow, completed: 0, running: 0, pending: 0, failed: 0, emailsFound: 0, cost: 0 };
+      entry = { workflow: run.workflow, label: run.workflow, completed: 0, running: 0, pending: 0, failed: 0, empty: 0, emailsFound: 0, cost: 0 };
       workflowMap.set(run.workflow, entry);
     }
 
     if (run.status === "completed") {
       entry.completed++;
-      // Check if this run found an email
       const output = run.output as Record<string, unknown> | null;
       if (output?.email) entry.emailsFound++;
     } else if (run.status === "running") {
@@ -125,6 +131,8 @@ export async function GET(
       entry.pending++;
     } else if (run.status === "failed") {
       entry.failed++;
+    } else if (run.status === "empty") {
+      entry.empty++;
     }
     entry.cost += run.cost ?? 0;
   }
@@ -133,12 +141,25 @@ export async function GET(
   const totalEnrichmentCost = workflowBreakdown.reduce((s, w) => s + w.cost, 0);
   const totalActive = workflowBreakdown.reduce((s, w) => s + w.running + w.pending, 0);
 
+  // Honest metrics: attempts vs eligible, emails found vs attempts.
+  const attempted = workflowBreakdown.reduce((s, w) => s + w.completed + w.empty + w.failed, 0);
+  const emailsFound = workflowBreakdown.reduce((s, w) => s + w.emailsFound, 0);
+  const totalEligibleNow = totalEligible + attempted; // Historical eligible pool
+
   return NextResponse.json({
     emailStats: {
       total: results.length,
       withEmail: totalWithEmail,
       percentage: results.length > 0 ? Math.round((totalWithEmail / results.length) * 1000) / 10 : 0,
       byPlatform,
+    },
+    enrichmentProgress: {
+      eligible: totalEligibleNow,
+      attempted,
+      remaining: totalEligible,
+      emailsFound,
+      attemptRate: totalEligibleNow > 0 ? Math.round((attempted / totalEligibleNow) * 1000) / 10 : 0,
+      emailHitRate: attempted > 0 ? Math.round((emailsFound / attempted) * 1000) / 10 : 0,
     },
     workflowBreakdown,
     totalActive,
