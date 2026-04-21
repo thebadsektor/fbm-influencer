@@ -25,6 +25,20 @@ export async function GET(
       try {
         subscriber = createSubscriber();
 
+        if (!subscriber) {
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                stage: "degraded",
+                message: "Live feed unavailable (REDIS_URL not configured)",
+                timestamp: new Date().toISOString(),
+              })}\n\n`
+            )
+          );
+          controller.close();
+          return;
+        }
+
         subscriber.subscribe(channel, (err) => {
           if (err) {
             console.error(`[sse] Subscribe error for ${channel}:`, err);

@@ -59,8 +59,8 @@ export async function POST(
         enrichmentRuns: {
           some: {
             workflow: workflowId,
-            // Don't retry runs that are in-flight or completed/empty (empty = we
-            // already confirmed the channel has no public email).
+            // Don't retry runs that are in-flight or confirmed done. Pending is
+            // legacy (from the old race path); we now create rows as running directly.
             status: { in: ["pending", "running", "completed", "empty"] },
           },
         },
@@ -128,11 +128,15 @@ export async function POST(
       input = { platformId: result.platformId, name: result.creatorName };
       channels.push(result.platformId);
     }
+    // Create as "running" directly — the auto-trigger path in lib/enrichment-runner.ts
+    // does the same. Two-step create-pending-then-update-to-running was racy:
+    // if the request got killed between the fetch and the updateMany, rows stayed
+    // `pending` until the 2h sweep. Skipping that intermediate state removes the bug.
     const run = await prisma.enrichmentRun.create({
       data: {
         resultId: result.id,
         workflow: workflowId,
-        status: "pending",
+        status: "running",
         input: JSON.parse(JSON.stringify(input)),
       },
     });
@@ -169,11 +173,7 @@ export async function POST(
       );
     }
 
-    await prisma.enrichmentRun.updateMany({
-      where: { id: { in: Object.values(enrichmentRunMap).map((r) => r.enrichmentRunId) } },
-      data: { status: "running" },
-    });
-
+    // Rows were already created as "running"; no updateMany needed on success.
     const sentCount = inputType === "crawlTargets" ? startUrls.length : channels.length;
     return NextResponse.json({
       ok: true,

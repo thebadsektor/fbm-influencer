@@ -2,15 +2,15 @@ import prisma from "@/lib/prisma";
 import { publishDiscoveryEvent } from "@/lib/redis";
 import { ENRICHMENT_WORKFLOWS } from "@/lib/constants-influencer";
 
-// How long a "running" EnrichmentRun must sit before the sweep gives up on it.
-// Raised from 30 min → 2 h because:
-//   1. A callback arriving AFTER the sweep used to be silently discarded; the new
-//      webhook logic can now re-animate a swept row, so being too eager is only
-//      a UI problem, not a data-loss one.
+// How long a "running"/"pending" EnrichmentRun must sit before the sweep gives
+// up on it. Raised from 30 min → 2 h because:
+//   1. A callback arriving AFTER the sweep used to be silently discarded; the
+//      webhook logic can now re-animate a swept row, so being too eager is
+//      only a UI problem, not a data-loss one.
 //   2. With chunked triggers (ENRICHMENT_CHUNK_SIZE) we no longer saturate
 //      Apify, so ~46 s avg scrape should land well inside this window.
 // If you want to disable the sweep entirely, set to a very large number.
-const STALE_RUN_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
+export const STALE_RUN_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 export interface EnrichmentResult {
   workflowId: string;
@@ -22,13 +22,41 @@ export interface EnrichmentResult {
 }
 
 /**
+ * Sweep stuck `running`/`pending` EnrichmentRun rows older than the threshold
+ * to `failed`. Safe to call from anywhere — cron tick, webhook, status route,
+ * runEnrichmentStep — it's idempotent and late callbacks can still re-animate
+ * swept rows via the webhook handler.
+ *
+ * @param campaignId Optional scope. When omitted, sweeps across all campaigns.
+ * @returns Number of rows swept.
+ */
+export async function sweepStaleEnrichmentRuns(campaignId?: string): Promise<number> {
+  const khSetFilter = campaignId
+    ? { result: { khSet: { campaignId } } }
+    : {};
+  const res = await prisma.enrichmentRun.updateMany({
+    where: {
+      status: { in: ["running", "pending"] },
+      startedAt: { lt: new Date(Date.now() - STALE_RUN_THRESHOLD_MS) },
+      ...khSetFilter,
+    },
+    data: {
+      status: "failed",
+      error: "Timed out — no callback from enrichment service (may still arrive; late callbacks will re-animate this row)",
+    },
+  });
+  return res.count;
+}
+
+/**
  * Run all eligible enrichment workflows for a campaign.
  * Checks ALL accumulated leads across ALL rounds.
  *
  * Lifecycle:
- * 1. Clean up stale runs (stuck "running" > 30 min)
+ * 1. Clean up stale runs
  * 2. For each workflow: count eligible leads, trigger if >= minBatch
- * 3. Only completed runs block re-enrichment (failed runs allow retry)
+ * 3. Leads with pending/running/completed/empty runs are excluded; failed
+ *    runs are retry-eligible (handled via new EnrichmentRun rows)
  */
 export async function runEnrichmentStep(
   campaignId: string,
@@ -42,18 +70,10 @@ export async function runEnrichmentStep(
   });
   const allKhSetIds = allKhSets.map((s) => s.id);
 
-  // ── Lifecycle: clean up stale runs ──
-  const staleCount = await prisma.enrichmentRun.updateMany({
-    where: {
-      status: "running",
-      startedAt: { lt: new Date(Date.now() - STALE_RUN_THRESHOLD_MS) },
-      result: { khSetId: { in: allKhSetIds } },
-    },
-    data: { status: "failed", error: "Timed out — no callback from enrichment service (may still arrive; late callbacks will re-animate this row)" },
-  });
-  if (staleCount.count > 0) {
+  const staleCount = await sweepStaleEnrichmentRuns(campaignId);
+  if (staleCount > 0) {
     await publishDiscoveryEvent(khSetId, "enrichment_cleanup",
-      `Cleared ${staleCount.count} stale enrichment runs (>2h without callback). Those leads are eligible for retry; late callbacks can still deliver data.`);
+      `Cleared ${staleCount} stale enrichment runs (>2h without callback). Those leads are eligible for retry; late callbacks can still deliver data.`);
   }
 
   await prisma.campaign.update({
@@ -77,9 +97,10 @@ export async function runEnrichmentStep(
         enrichmentRuns: {
           some: {
             workflow: workflow.id,
-            // Don't retry leads that already went through successfully (email found
-            // OR confirmed empty by the scraper). Failed/running rows remain eligible.
-            status: { in: ["completed", "empty"] },
+            // Exclude in-flight (pending/running) and successful (completed/empty)
+            // runs. Only `failed` runs are retry-eligible — the cron tick + manual
+            // retry endpoint picks those up by creating fresh EnrichmentRun rows.
+            status: { in: ["pending", "running", "completed", "empty"] },
           },
         },
       },
@@ -157,9 +178,10 @@ async function triggerN8nEnrichment(
         enrichmentRuns: {
           some: {
             workflow: workflow.id,
-            // Don't retry leads that already went through successfully (email found
-            // OR confirmed empty by the scraper). Failed/running rows remain eligible.
-            status: { in: ["completed", "empty"] },
+            // Exclude in-flight (pending/running) and successful (completed/empty)
+            // runs. Only `failed` runs are retry-eligible — the cron tick + manual
+            // retry endpoint picks those up by creating fresh EnrichmentRun rows.
+            status: { in: ["pending", "running", "completed", "empty"] },
           },
         },
       },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mail, Loader2, Youtube, DollarSign, ExternalLink, CheckCircle2, XCircle, BarChart3, ChevronLeft, ChevronRight } from "lucide-react";
+import { Mail, Loader2, Youtube, DollarSign, CheckCircle2, XCircle, BarChart3, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 
 interface WorkflowBreakdown {
   workflow: string;
@@ -25,6 +25,7 @@ interface WorkflowBreakdown {
   running: number;
   pending: number;
   failed: number;
+  empty: number;
   emailsFound: number;
   cost: number;
 }
@@ -35,6 +36,14 @@ interface EnrichmentStatus {
     withEmail: number;
     percentage: number;
     byPlatform: Record<string, { total: number; withEmail: number; percentage: number }>;
+  };
+  enrichmentProgress?: {
+    eligible: number;
+    attempted: number;
+    remaining: number;
+    emailsFound: number;
+    attemptRate: number;
+    emailHitRate: number;
   };
   workflowBreakdown: WorkflowBreakdown[];
   totalActive: number;
@@ -58,7 +67,9 @@ export function EnrichmentSheet({
   const [tabLoading, setTabLoading] = useState(false);
   const [batchSize, setBatchSize] = useState("50");
   const [starting, setStarting] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const perPage = 25;
 
@@ -85,12 +96,15 @@ export function EnrichmentSheet({
     if (open) loadStatus();
   }, [open, loadStatus]);
 
-  // Poll status only (not tabs)
+  // Poll status continuously while the sheet is open. The previous
+  // "only-when-active" logic froze the UI the moment the last run finished —
+  // if a cron tick or callback then advanced things, the user had to close
+  // and reopen to see it. 15 s is enough for a dashboard; 5 s was overkill.
   useEffect(() => {
-    if (!open || !status?.totalActive) return;
-    const interval = setInterval(loadStatus, 5000);
+    if (!open) return;
+    const interval = setInterval(loadStatus, 15000);
     return () => clearInterval(interval);
-  }, [open, status?.totalActive, loadStatus]);
+  }, [open, loadStatus]);
 
   // Load tab data on tab switch (cached — only loads once per tab)
   useEffect(() => {
@@ -104,6 +118,7 @@ export function EnrichmentSheet({
   const handleEnrich = async (workflowId: string) => {
     setStarting(workflowId);
     setError(null);
+    setInfo(null);
     const res = await fetch(`/api/campaigns/${campaignId}/enrichment/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -112,6 +127,29 @@ export function EnrichmentSheet({
     if (!res.ok) { const d = await res.json(); setError(d.error || "Failed"); }
     await loadStatus();
     setStarting(null);
+  };
+
+  const handleRetryFailed = async () => {
+    setRetrying(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}/enrichment/retry-failed`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Retry failed");
+      } else {
+        const sent = data.totalSent ?? 0;
+        setInfo(sent > 0
+          ? `Requeued ${sent} failed leads. They'll show up as "active" shortly.`
+          : "No failed leads currently eligible for retry (batch threshold not met, or all in-flight).");
+      }
+      await loadStatus();
+    } finally {
+      setRetrying(false);
+    }
   };
 
   const refreshTab = () => {
@@ -173,16 +211,57 @@ export function EnrichmentSheet({
               {/* OVERVIEW TAB */}
               {tab === "overview" && (
                 <div className="max-w-2xl mx-auto space-y-6 py-6 px-6">
-                  {/* Overall progress */}
-                  <div>
-                    <div className="flex items-baseline justify-between mb-2">
-                      <p className="text-3xl font-bold">{es!.withEmail} <span className="text-base font-normal text-muted-foreground">/ {es!.total} emails</span></p>
-                      <span className="text-lg text-muted-foreground">{es!.percentage}%</span>
+                  {/* Overall progress — honest metrics. Top row = attempt coverage,
+                      bottom row = hit rate. Legacy "X% of all scraped" is gone because
+                      it was capped by the qualified-rate and looked like a broken meter. */}
+                  {status.enrichmentProgress ? (
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-baseline justify-between mb-2">
+                          <p className="text-sm text-muted-foreground">Enrichment coverage</p>
+                          <span className="text-sm text-muted-foreground">
+                            {status.enrichmentProgress.attempted} / {status.enrichmentProgress.eligible} attempted
+                            ({status.enrichmentProgress.attemptRate}%)
+                          </span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                          <div
+                            className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                            style={{ width: `${status.enrichmentProgress.attemptRate}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 pt-1">
+                        <div className="p-3 rounded-lg border bg-green-500/5">
+                          <p className="text-xl font-bold text-green-500">{status.enrichmentProgress.emailsFound}</p>
+                          <p className="text-[11px] text-muted-foreground">emails found</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{status.enrichmentProgress.emailHitRate}% hit rate</p>
+                        </div>
+                        <div className="p-3 rounded-lg border bg-muted/30">
+                          <p className="text-xl font-bold text-muted-foreground">
+                            {status.workflowBreakdown.reduce((s, w) => s + w.empty, 0)}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">no public email</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">confirmed empty</p>
+                        </div>
+                        <div className="p-3 rounded-lg border bg-muted/30">
+                          <p className="text-xl font-bold text-muted-foreground">{status.enrichmentProgress.remaining}</p>
+                          <p className="text-[11px] text-muted-foreground">not yet attempted</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">use buttons below</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
-                      <div className="h-full bg-green-500 rounded-full transition-all duration-500" style={{ width: `${es!.percentage}%` }} />
+                  ) : (
+                    <div>
+                      <div className="flex items-baseline justify-between mb-2">
+                        <p className="text-3xl font-bold">{es!.withEmail} <span className="text-base font-normal text-muted-foreground">/ {es!.total} emails</span></p>
+                        <span className="text-lg text-muted-foreground">{es!.percentage}%</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+                        <div className="h-full bg-green-500 rounded-full transition-all duration-500" style={{ width: `${es!.percentage}%` }} />
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Platform — full width cards */}
                   <div className="grid grid-cols-2 gap-3">
@@ -206,7 +285,8 @@ export function EnrichmentSheet({
                   <div className="space-y-3">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Workflows</p>
                     {status.workflowBreakdown.map((wf) => {
-                      const totalRuns = wf.completed + wf.running + wf.pending + wf.failed;
+                      const empty = wf.empty ?? 0;
+                      const totalRuns = wf.completed + wf.running + wf.pending + wf.failed + empty;
                       const isActive = wf.running > 0 || wf.pending > 0;
                       return (
                         <div key={wf.workflow} className="p-4 rounded-lg border space-y-3">
@@ -215,11 +295,12 @@ export function EnrichmentSheet({
                             {isActive && <Badge variant="secondary" className="animate-pulse text-xs">{wf.running + wf.pending} active</Badge>}
                           </div>
                           {totalRuns > 0 ? (
-                            <div className="grid grid-cols-4 gap-2 text-center">
-                              <div className="p-2 rounded bg-muted/50"><p className="text-lg font-bold text-green-500">{wf.completed}</p><p className="text-xs text-muted-foreground">done</p></div>
-                              <div className="p-2 rounded bg-muted/50"><p className="text-lg font-bold text-blue-400">{wf.running + wf.pending}</p><p className="text-xs text-muted-foreground">active</p></div>
-                              <div className="p-2 rounded bg-muted/50"><p className="text-lg font-bold text-red-400">{wf.failed}</p><p className="text-xs text-muted-foreground">failed</p></div>
-                              <div className="p-2 rounded bg-muted/50"><p className="text-lg font-bold text-green-400">{wf.emailsFound}</p><p className="text-xs text-muted-foreground">emails</p></div>
+                            <div className="grid grid-cols-5 gap-2 text-center">
+                              <div className="p-2 rounded bg-muted/50"><p className="text-lg font-bold text-green-500">{wf.emailsFound}</p><p className="text-[11px] text-muted-foreground">emails</p></div>
+                              <div className="p-2 rounded bg-muted/50"><p className="text-lg font-bold text-muted-foreground">{empty}</p><p className="text-[11px] text-muted-foreground">no email</p></div>
+                              <div className="p-2 rounded bg-muted/50"><p className="text-lg font-bold text-blue-400">{wf.running + wf.pending}</p><p className="text-[11px] text-muted-foreground">active</p></div>
+                              <div className="p-2 rounded bg-muted/50"><p className="text-lg font-bold text-red-400">{wf.failed}</p><p className="text-[11px] text-muted-foreground">failed</p></div>
+                              <div className="p-2 rounded bg-muted/50"><p className="text-lg font-bold text-muted-foreground">{totalRuns}</p><p className="text-[11px] text-muted-foreground">total</p></div>
                             </div>
                           ) : <p className="text-sm text-muted-foreground">No runs yet</p>}
                         </div>
@@ -238,14 +319,30 @@ export function EnrichmentSheet({
                       </Select>
                     </div>
                     <div className="flex gap-3">
-                      <Button variant="outline" className="flex-1" disabled={!!starting} onClick={() => handleEnrich("youtube-email-scraper")}>
+                      <Button variant="outline" className="flex-1" disabled={!!starting || retrying} onClick={() => handleEnrich("youtube-email-scraper")}>
                         {starting === "youtube-email-scraper" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Youtube className="h-4 w-4 mr-2" />} Enrich YouTube
                       </Button>
-                      <Button variant="outline" className="flex-1" disabled={!!starting} onClick={() => handleEnrich("tiktok-linktree-scraper")}>
+                      <Button variant="outline" className="flex-1" disabled={!!starting || retrying} onClick={() => handleEnrich("tiktok-linktree-scraper")}>
                         {starting === "tiktok-linktree-scraper" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <span className="mr-2">🎵</span>} Enrich TikTok
                       </Button>
                     </div>
+                    {(() => {
+                      const totalFailed = status.workflowBreakdown.reduce((s, w) => s + w.failed, 0);
+                      if (totalFailed === 0) return null;
+                      return (
+                        <Button
+                          variant="secondary"
+                          className="w-full"
+                          disabled={retrying || !!starting}
+                          onClick={handleRetryFailed}
+                        >
+                          {retrying ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RotateCcw className="h-4 w-4 mr-2" />}
+                          Retry {totalFailed} failed {totalFailed === 1 ? "lead" : "leads"}
+                        </Button>
+                      );
+                    })()}
                     {error && <p className="text-sm text-red-500">{error}</p>}
+                    {info && <p className="text-sm text-muted-foreground">{info}</p>}
                   </div>
 
                   {status.totalEnrichmentCost > 0 && (

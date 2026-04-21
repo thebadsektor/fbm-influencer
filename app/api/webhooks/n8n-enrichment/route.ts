@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyN8nRequest } from "@/lib/verify-n8n-signature";
+import { runEnrichmentStep } from "@/lib/enrichment-runner";
 
 /**
  * Universal enrichment callback for any n8n workflow.
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
 
   let processed = 0;
   let errors = 0;
+  const touchedRunIds = new Set<string>();
 
   for (const update of updates) {
     try {
@@ -122,14 +124,48 @@ export async function POST(req: NextRequest) {
         await applyResultUpdates(run.resultId, resultUpdates);
       }
 
+      touchedRunIds.add(run.id);
       processed++;
     } catch (e) {
       errors++;
-      console.error("Enrichment callback error:", e);
+      console.error("[enrichment-callback] error:", e);
     }
   }
 
+  // ── Cascade: once a batch lands, pick up any newly-eligible leads for the
+  // same campaign. Fire-and-forget so the HTTP response is snappy for n8n.
+  // Previously this callback was fully stateless — nothing advanced until the
+  // next round finished or a user polled the UI, which is how we ended up
+  // with 774 failed runs that never retried.
+  if (touchedRunIds.size > 0) {
+    void cascadeTouchedCampaigns(Array.from(touchedRunIds));
+  }
+
   return NextResponse.json({ ok: true, processed, errors });
+}
+
+async function cascadeTouchedCampaigns(runIds: string[]) {
+  try {
+    const rows = await prisma.enrichmentRun.findMany({
+      where: { id: { in: runIds } },
+      select: { result: { select: { khSetId: true, khSet: { select: { campaignId: true } } } } },
+    });
+    const perCampaign = new Map<string, string>(); // campaignId -> any khSetId
+    for (const r of rows) {
+      const campaignId = r.result?.khSet?.campaignId;
+      const khSetId = r.result?.khSetId;
+      if (campaignId && khSetId && !perCampaign.has(campaignId)) {
+        perCampaign.set(campaignId, khSetId);
+      }
+    }
+    for (const [campaignId, khSetId] of perCampaign) {
+      runEnrichmentStep(campaignId, khSetId).catch((err) => {
+        console.error(`[enrichment-callback] cascade failed for ${campaignId}:`, err);
+      });
+    }
+  } catch (err) {
+    console.error("[enrichment-callback] cascade query failed:", err);
+  }
 }
 
 // Allow-list of Result fields the n8n callback is permitted to write.

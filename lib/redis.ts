@@ -1,19 +1,22 @@
 import Redis from "ioredis";
 
-const REDIS_URL =
-  process.env.REDIS_URL ||
-  "redis://default:f3BpGGaTvGFV7DqyzfGxTIQVrPvC6!H7@redis.railway.internal:6379";
+// REDIS_URL is optional. When unset, publish/subscribe become no-ops so the
+// pipeline keeps working without Redis-backed SSE. Previously there was a
+// hardcoded fallback URL with embedded credentials — removed for safety.
+const REDIS_URL = process.env.REDIS_URL;
 
-// Singleton for general use (PUBLISH, GET, SET, LPUSH etc)
 let client: Redis | null = null;
+let clientInitFailed = false;
 
-export function getRedis(): Redis {
+export function getRedis(): Redis | null {
+  if (!REDIS_URL || clientInitFailed) return null;
   if (!client) {
     client = new Redis(REDIS_URL, {
       maxRetriesPerRequest: 3,
       lazyConnect: true,
     });
     client.connect().catch((err) => {
+      clientInitFailed = true;
       console.error("[redis] Connection error:", err.message);
     });
   }
@@ -22,13 +25,19 @@ export function getRedis(): Redis {
 
 /**
  * Factory for subscribers — each SSE connection needs its own Redis client
- * because a subscribed client can't be used for other commands.
+ * because a subscribed client can't be used for other commands. Returns null
+ * when REDIS_URL is not configured; callers must handle SSE degradation.
  */
-export function createSubscriber(): Redis {
+export function createSubscriber(): Redis | null {
+  if (!REDIS_URL) return null;
   return new Redis(REDIS_URL, {
     maxRetriesPerRequest: 3,
     lazyConnect: false,
   });
+}
+
+export function isRedisConfigured(): boolean {
+  return !!REDIS_URL;
 }
 
 /**
@@ -43,8 +52,9 @@ export async function publishDiscoveryEvent(
   message: string,
   data?: Record<string, unknown>
 ) {
+  const redis = getRedis();
+  if (!redis) return;
   try {
-    const redis = getRedis();
     const event = JSON.stringify({
       stage,
       message,
@@ -53,7 +63,6 @@ export async function publishDiscoveryEvent(
     });
     await redis.publish(`discovery:${khSetId}`, event);
   } catch (err) {
-    // Don't fail the request if Redis is unavailable
     console.error("[redis] Publish error:", err);
   }
 }
