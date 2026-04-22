@@ -24,6 +24,19 @@ export interface CronTickSummary {
   durationMs: number;
 }
 
+// Module-scope health record — updated on every tick, read by the UI so
+// users can see "last tick was 42s ago, 3 retries fired". In-memory only:
+// on restart it resets to null, which is itself a useful signal ("the
+// process just restarted, cron may not have pinged yet").
+let lastCronStatus: {
+  ranAt: string;
+  summary: CronTickSummary;
+} | null = null;
+
+export function getLastCronStatus() {
+  return lastCronStatus;
+}
+
 /**
  * Tick the pipeline forward for every campaign that needs it. Runs safely
  * on a short interval (30–60 s). Intended to replace UI-driven advancement:
@@ -120,6 +133,7 @@ export async function runCronTick(): Promise<CronTickSummary> {
   }
 
   summary.durationMs = Date.now() - startedAt;
+  lastCronStatus = { ranAt: new Date().toISOString(), summary };
   console.log(`[cron-tick] ${JSON.stringify(summary)}`);
   return summary;
 }

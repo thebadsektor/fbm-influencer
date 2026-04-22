@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mail, Loader2, Youtube, DollarSign, CheckCircle2, XCircle, BarChart3, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import { Mail, Loader2, Youtube, DollarSign, CheckCircle2, XCircle, BarChart3, ChevronLeft, ChevronRight, RotateCcw, AlertTriangle, Activity, Layers } from "lucide-react";
 
 interface WorkflowBreakdown {
   workflow: string;
@@ -28,6 +28,24 @@ interface WorkflowBreakdown {
   empty: number;
   emailsFound: number;
   cost: number;
+  reachable?: number;
+}
+
+interface RoundBreakdown {
+  round: number;
+  khSetStatus: string;
+  totalResults: number;
+  withEmail: number;
+  completed: number;
+  empty: number;
+  failed: number;
+  inFlight: number;
+}
+
+interface FailureReason {
+  reason: string;
+  workflow: string;
+  count: number;
 }
 
 interface EnrichmentStatus {
@@ -41,16 +59,38 @@ interface EnrichmentStatus {
     eligible: number;
     attempted: number;
     remaining: number;
+    legacyRemaining?: number;
     emailsFound: number;
     attemptRate: number;
     emailHitRate: number;
   };
+  unreachable?: {
+    total: number;
+    youtubeMissingChannelId: number;
+    tiktokMissingCrawlTargets: number;
+  };
   workflowBreakdown: WorkflowBreakdown[];
+  rounds?: RoundBreakdown[];
+  topFailureReasons?: FailureReason[];
   totalActive: number;
   totalEnrichmentCost: number;
 }
 
-type Tab = "overview" | "enriched" | "attempted" | "insights";
+interface CronHealth {
+  configured: boolean;
+  ranAt: string | null;
+  summary: {
+    sweptStaleRuns: number;
+    stabilizationChecks: number;
+    autoRunAdvances: number;
+    retryTriggers: number;
+    errors: string[];
+    durationMs: number;
+  } | null;
+  ageSeconds: number | null;
+}
+
+type Tab = "overview" | "rounds" | "enriched" | "attempted" | "insights";
 
 export function EnrichmentSheet({
   campaignId,
@@ -62,6 +102,7 @@ export function EnrichmentSheet({
   onOpenChange: (open: boolean) => void;
 }) {
   const [status, setStatus] = useState<EnrichmentStatus | null>(null);
+  const [cronHealth, setCronHealth] = useState<CronHealth | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
   const [tabCache, setTabCache] = useState<Record<string, unknown>>({});
   const [tabLoading, setTabLoading] = useState(false);
@@ -73,10 +114,15 @@ export function EnrichmentSheet({
   const [page, setPage] = useState(0);
   const perPage = 25;
 
-  // Load status (polling target)
+  // Load status (polling target). Cron health piggy-backs on the same cadence
+  // so the UI has a single source of "is anything happening right now".
   const loadStatus = useCallback(async () => {
-    const res = await fetch(`/api/campaigns/${campaignId}/enrichment/status`);
-    if (res.ok) setStatus(await res.json());
+    const [statusRes, cronRes] = await Promise.all([
+      fetch(`/api/campaigns/${campaignId}/enrichment/status`),
+      fetch(`/api/cron/status`),
+    ]);
+    if (statusRes.ok) setStatus(await statusRes.json());
+    if (cronRes.ok) setCronHealth(await cronRes.json());
   }, [campaignId]);
 
   // Load tab data (cached per tab)
@@ -164,10 +210,28 @@ export function EnrichmentSheet({
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: "overview", label: "Overview", icon: <Mail className="h-3 w-3" /> },
+    { key: "rounds", label: "Rounds", icon: <Layers className="h-3 w-3" /> },
     { key: "enriched", label: "Enriched", icon: <CheckCircle2 className="h-3 w-3" /> },
     { key: "attempted", label: "No Email", icon: <XCircle className="h-3 w-3" /> },
     { key: "insights", label: "Insights", icon: <BarChart3 className="h-3 w-3" /> },
   ];
+
+  // Human-readable cron freshness label. We flag "stale" past 3 minutes
+  // because the recommended cadence is 60 s; 3× that is the point where
+  // the pipeline is effectively dead for new work.
+  const cronBadge = (() => {
+    if (!cronHealth) return null;
+    if (!cronHealth.configured) {
+      return { tone: "destructive" as const, text: "Cron not configured" };
+    }
+    if (cronHealth.ageSeconds == null) {
+      return { tone: "secondary" as const, text: "Cron idle (no ticks since restart)" };
+    }
+    if (cronHealth.ageSeconds > 180) {
+      return { tone: "destructive" as const, text: `Cron stale (${cronHealth.ageSeconds}s)` };
+    }
+    return { tone: "outline" as const, text: `Cron OK (${cronHealth.ageSeconds}s ago)` };
+  })();
 
   // Pagination helper
   const paginate = (items: unknown[]) => {
@@ -180,10 +244,16 @@ export function EnrichmentSheet({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] w-full h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-0">
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
             <Mail className="h-5 w-5" />
             Email Enrichment
             {status?.totalActive ? <Badge variant="secondary" className="animate-pulse text-xs">{status.totalActive} active</Badge> : null}
+            {cronBadge && (
+              <Badge variant={cronBadge.tone} className="text-xs font-normal">
+                <Activity className="h-3 w-3 mr-1" />
+                {cronBadge.text}
+              </Badge>
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -263,6 +333,29 @@ export function EnrichmentSheet({
                     </div>
                   )}
 
+                  {/* Unreachable callout — results the backend eligibility
+                      filter skips because the platform-specific identifier
+                      is missing. Prevents "waiting forever" confusion. */}
+                  {status.unreachable && status.unreachable.total > 0 && (
+                    <div className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+                      <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                      <div className="space-y-1 text-sm">
+                        <p className="font-medium">
+                          {status.unreachable.total} leads can&apos;t be enriched
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {status.unreachable.youtubeMissingChannelId > 0 && (
+                            <>{status.unreachable.youtubeMissingChannelId} YouTube rows are missing a UC-prefixed channel ID. </>
+                          )}
+                          {status.unreachable.tiktokMissingCrawlTargets > 0 && (
+                            <>{status.unreachable.tiktokMissingCrawlTargets} TikTok rows are missing a bio-link URL (crawlTargets). </>
+                          )}
+                          Fix these in the discovery workflow (enrich at scrape time, not after).
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Platform — full width cards */}
                   <div className="grid grid-cols-2 gap-3">
                     {ytStats && (
@@ -308,6 +401,27 @@ export function EnrichmentSheet({
                     })}
                   </div>
 
+                  {/* Top failure reasons — tells the user *why* enrichment
+                      is failing so they can fix the root cause (n8n down,
+                      Apify out of credit, actor broken) instead of
+                      blindly retrying. */}
+                  {status.topFailureReasons && status.topFailureReasons.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Top failure reasons (last 14 days)</p>
+                      <div className="space-y-1">
+                        {status.topFailureReasons.map((f, i) => (
+                          <div key={`${f.workflow}-${i}`} className="flex items-start justify-between gap-3 rounded-md border bg-muted/20 px-3 py-2 text-sm">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-muted-foreground mb-0.5">{f.workflow}</p>
+                              <p className="truncate font-mono text-xs">{f.reason}</p>
+                            </div>
+                            <Badge variant="outline" className="text-xs flex-shrink-0">{f.count}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Manual trigger */}
                   <div className="space-y-3 pt-3 border-t">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Manual Enrichment</p>
@@ -347,6 +461,69 @@ export function EnrichmentSheet({
 
                   {status.totalEnrichmentCost > 0 && (
                     <p className="text-xs text-muted-foreground flex items-center gap-1 pt-2 border-t"><DollarSign className="h-3 w-3" />Total: ${status.totalEnrichmentCost.toFixed(2)}</p>
+                  )}
+                </div>
+              )}
+
+              {/* ROUNDS TAB — per-iteration enrichment state. Answers the
+                  "did round N's enrichment actually complete?" question
+                  that used to require eyeballing the timeline + mental math. */}
+              {tab === "rounds" && (
+                <div className="max-w-4xl mx-auto py-6 px-6">
+                  {!status.rounds || status.rounds.length === 0 ? (
+                    <p className="py-12 text-center text-sm text-muted-foreground">No rounds yet.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Per-round enrichment</p>
+                        <p className="text-xs text-muted-foreground">Updated every 15s</p>
+                      </div>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b text-xs text-muted-foreground">
+                            <th className="text-left py-2 font-medium">Round</th>
+                            <th className="text-left py-2 font-medium">Set status</th>
+                            <th className="text-right py-2 font-medium">Results</th>
+                            <th className="text-right py-2 font-medium">With email</th>
+                            <th className="text-right py-2 font-medium text-green-500">Completed</th>
+                            <th className="text-right py-2 font-medium">Empty</th>
+                            <th className="text-right py-2 font-medium text-red-400">Failed</th>
+                            <th className="text-right py-2 font-medium text-blue-400">In flight</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {status.rounds.map((r) => (
+                            <tr key={r.round} className="border-b hover:bg-muted/30">
+                              <td className="py-2 font-medium">{r.round}</td>
+                              <td className="py-2">
+                                <Badge variant="outline" className="text-xs">{r.khSetStatus}</Badge>
+                              </td>
+                              <td className="py-2 text-right tabular-nums">{r.totalResults}</td>
+                              <td className="py-2 text-right tabular-nums text-green-500">{r.withEmail}</td>
+                              <td className="py-2 text-right tabular-nums text-green-500">{r.completed}</td>
+                              <td className="py-2 text-right tabular-nums text-muted-foreground">{r.empty}</td>
+                              <td className="py-2 text-right tabular-nums text-red-400">{r.failed}</td>
+                              <td className="py-2 text-right tabular-nums text-blue-400">{r.inFlight}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 font-medium">
+                            <td className="py-2" colSpan={2}>Total</td>
+                            <td className="py-2 text-right tabular-nums">{status.rounds.reduce((s, r) => s + r.totalResults, 0)}</td>
+                            <td className="py-2 text-right tabular-nums">{status.rounds.reduce((s, r) => s + r.withEmail, 0)}</td>
+                            <td className="py-2 text-right tabular-nums">{status.rounds.reduce((s, r) => s + r.completed, 0)}</td>
+                            <td className="py-2 text-right tabular-nums">{status.rounds.reduce((s, r) => s + r.empty, 0)}</td>
+                            <td className="py-2 text-right tabular-nums">{status.rounds.reduce((s, r) => s + r.failed, 0)}</td>
+                            <td className="py-2 text-right tabular-nums">{status.rounds.reduce((s, r) => s + r.inFlight, 0)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                      <p className="text-xs text-muted-foreground">
+                        Each row is one KH set (one discovery round). &quot;Failed&quot; leads are retry-eligible
+                        — the cron tick will pick them up when their workflow&apos;s minBatch is met.
+                      </p>
+                    </div>
                   )}
                 </div>
               )}

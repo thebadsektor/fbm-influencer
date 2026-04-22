@@ -144,6 +144,17 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, processed, errors });
 }
 
+// Debounce cascades per campaign. n8n often posts batched callbacks in a
+// ~2s window (10-per-request, 2s interval); without a debounce each one
+// would fire its own `runEnrichmentStep`, and concurrent calls could race
+// between `findMany(eligible)` and `create(running)` — yielding duplicate
+// in-flight rows for the same result. 30 s is generous enough to coalesce
+// a full n8n batch but short enough that real new leads get picked up
+// promptly. Module-scoped map; fine for the current single-replica
+// deploy. If we scale out, replace with a Redis SET NX / EX.
+const CASCADE_DEBOUNCE_MS = 30_000;
+const lastCascadedAt = new Map<string, number>();
+
 async function cascadeTouchedCampaigns(runIds: string[]) {
   try {
     const rows = await prisma.enrichmentRun.findMany({
@@ -158,7 +169,11 @@ async function cascadeTouchedCampaigns(runIds: string[]) {
         perCampaign.set(campaignId, khSetId);
       }
     }
+    const now = Date.now();
     for (const [campaignId, khSetId] of perCampaign) {
+      const last = lastCascadedAt.get(campaignId) ?? 0;
+      if (now - last < CASCADE_DEBOUNCE_MS) continue;
+      lastCascadedAt.set(campaignId, now);
       runEnrichmentStep(campaignId, khSetId).catch((err) => {
         console.error(`[enrichment-callback] cascade failed for ${campaignId}:`, err);
       });
