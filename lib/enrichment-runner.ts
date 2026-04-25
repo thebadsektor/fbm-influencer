@@ -491,8 +491,12 @@ async function triggerServerSideEnrichment(
 // repo). The service performs HTTP fetches + email extraction and returns a
 // per-item result inline. Each batch corresponds to one HTTP round-trip.
 
-const EXTERNAL_SERVICE_BATCH_SIZE = 50;
-const EXTERNAL_SERVICE_TIMEOUT_MS = 60_000;
+// Smaller batches mean shorter worst-case round-trips (one slow URL can't
+// abort 50 sibling fetches) and let partial-progress land instead of all-or-nothing.
+// 25 × 8s per-URL timeout × concurrency 10 ≈ 20s typical, well under the
+// 120s budget below.
+const EXTERNAL_SERVICE_BATCH_SIZE = 25;
+const EXTERNAL_SERVICE_TIMEOUT_MS = 120_000;
 
 type ExternalServiceResult = {
   key: string;
