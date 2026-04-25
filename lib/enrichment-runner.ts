@@ -87,8 +87,19 @@ export async function runEnrichmentStep(
       ? {}
       : { platform: { contains: workflow.platform, mode: "insensitive" as const } };
 
-    // Base eligibility: ALL leads without email, across ALL rounds
-    // Only exclude leads with a COMPLETED run (failed runs allow retry)
+    // Base eligibility: leads without email, no in-flight or terminal run for THIS workflow,
+    // and (if dependsOn is set) every prerequisite workflow has reached completed/empty.
+    // The dependsOn cascade keeps free workflows running first; paid workflows only fire
+    // on leads where the cheaper providers already missed.
+    const dependsOnFilters = (workflow.dependsOn ?? []).map((depId) => ({
+      enrichmentRuns: {
+        some: {
+          workflow: depId,
+          status: { in: ["completed", "empty"] },
+        },
+      },
+    }));
+
     const baseWhere = {
       khSetId: { in: allKhSetIds },
       ...platformFilter,
@@ -104,6 +115,7 @@ export async function runEnrichmentStep(
           },
         },
       },
+      ...(dependsOnFilters.length > 0 ? { AND: dependsOnFilters } : {}),
     };
 
     // Input-type-specific filters
@@ -134,7 +146,9 @@ export async function runEnrichmentStep(
       { workflow: workflow.id, count: eligibleCount });
 
     try {
-      const sent = await triggerN8nEnrichment(allKhSetIds, workflow, eligibleCount, inputType);
+      // Branch on runner — n8n / server / external-service share a common
+      // EnrichmentRun lifecycle but reach the work via different transports.
+      const sent = await triggerEnrichmentByRunner(allKhSetIds, workflow, eligibleCount, inputType);
       results[workflow.id] = { workflowId: workflow.id, label: workflow.label, sent, eligible: eligibleCount, deferred: false };
 
       await publishDiscoveryEvent(khSetId, "enrichment_triggered",
@@ -152,12 +166,38 @@ export async function runEnrichmentStep(
   return results;
 }
 
-async function triggerN8nEnrichment(
+/**
+ * Fan out to the correct trigger based on workflow.runner. All paths share the
+ * eligibility query shape (defined in `runEnrichmentStep`) and the EnrichmentRun
+ * lifecycle. Only the actual work transport differs.
+ */
+async function triggerEnrichmentByRunner(
   allKhSetIds: string[],
   workflow: typeof ENRICHMENT_WORKFLOWS[number],
   limit: number,
   inputType: string,
 ): Promise<number> {
+  switch (workflow.runner) {
+    case "n8n":
+      return triggerN8nEnrichment(allKhSetIds, workflow, limit, inputType);
+    case "server":
+      return triggerServerSideEnrichment(allKhSetIds, workflow, limit, inputType);
+    case "external-service":
+      return triggerExternalServiceEnrichment(allKhSetIds, workflow, limit, inputType);
+    default:
+      throw new Error(`Unknown enrichment runner: ${(workflow as { runner: string }).runner}`);
+  }
+}
+
+/**
+ * Build the eligibility WHERE clause for a workflow. Used by every trigger so
+ * the cascade (dependsOn) is enforced consistently.
+ */
+function buildEligibilityWhere(
+  allKhSetIds: string[],
+  workflow: typeof ENRICHMENT_WORKFLOWS[number],
+  inputType: string,
+): Record<string, unknown> {
   const platformFilter = (workflow.platform as string) === "ALL"
     ? {}
     : { platform: { contains: workflow.platform, mode: "insensitive" as const } };
@@ -168,25 +208,45 @@ async function triggerN8nEnrichment(
       ? { platformId: { startsWith: workflow.platformIdPrefix } }
       : {};
 
-  // Prioritize: highest fit score first, then highest followers
-  const eligible = await prisma.result.findMany({
-    where: {
-      khSetId: { in: allKhSetIds },
-      ...platformFilter,
-      OR: [{ email: null }, { email: "" }],
-      NOT: {
-        enrichmentRuns: {
-          some: {
-            workflow: workflow.id,
-            // Exclude in-flight (pending/running) and successful (completed/empty)
-            // runs. Only `failed` runs are retry-eligible — the cron tick + manual
-            // retry endpoint picks those up by creating fresh EnrichmentRun rows.
-            status: { in: ["pending", "running", "completed", "empty"] },
-          },
+  const dependsOnFilters = (workflow.dependsOn ?? []).map((depId) => ({
+    enrichmentRuns: {
+      some: { workflow: depId, status: { in: ["completed", "empty"] } },
+    },
+  }));
+
+  // Merge dependsOn AND with the input-type AND if both exist.
+  const ANDClause = [
+    ...((extraWhere as { AND?: object[] }).AND ?? []),
+    ...dependsOnFilters,
+  ];
+
+  return {
+    khSetId: { in: allKhSetIds },
+    ...platformFilter,
+    ...(ANDClause.length > 0 ? { AND: ANDClause } : {}),
+    ...(inputType === "crawlTargets" ? {} : extraWhere),
+    OR: [{ email: null }, { email: "" }],
+    NOT: {
+      enrichmentRuns: {
+        some: {
+          workflow: workflow.id,
+          status: { in: ["pending", "running", "completed", "empty"] },
         },
       },
-      ...extraWhere,
     },
+  };
+}
+
+async function triggerN8nEnrichment(
+  allKhSetIds: string[],
+  workflow: typeof ENRICHMENT_WORKFLOWS[number],
+  limit: number,
+  inputType: string,
+): Promise<number> {
+  const where = buildEligibilityWhere(allKhSetIds, workflow, inputType);
+
+  const eligible = await prisma.result.findMany({
+    where: where as never,
     select: { id: true, platformId: true, creatorName: true, crawlTargets: true },
     orderBy: [
       { campaignFitScore: { sort: "desc", nulls: "last" } },
@@ -344,4 +404,241 @@ async function triggerUrlBasedEnrichment(
   }
 
   return sentTotal;
+}
+
+// ─── runner: "server" (in-process Node handlers) ──────────────────────────
+//
+// For workflows with `runner: "server"` and a `handler` registered in
+// lib/enrichment-handlers/. Runs synchronously per-result. No external I/O,
+// safe in a request handler — but it BLOCKS for the duration of the batch.
+// Keep handlers fast (regex over short strings, no fetch, no LLM).
+
+async function triggerServerSideEnrichment(
+  allKhSetIds: string[],
+  workflow: typeof ENRICHMENT_WORKFLOWS[number],
+  limit: number,
+  inputType: string,
+): Promise<number> {
+  const { getHandler } = await import("@/lib/enrichment-handlers");
+  if (!workflow.handler) {
+    throw new Error(`workflow ${workflow.id} runner=server but no handler set`);
+  }
+  const handler = getHandler(workflow.handler);
+  if (!handler) {
+    throw new Error(`unknown enrichment handler: ${workflow.handler}`);
+  }
+
+  const where = buildEligibilityWhere(allKhSetIds, workflow, inputType);
+  const eligible = await prisma.result.findMany({
+    where: where as never,
+    select: {
+      id: true, platformId: true, creatorName: true, creatorHandle: true,
+      bio: true, rawText: true, crawlTargets: true, profileUrl: true,
+    },
+    orderBy: [
+      { campaignFitScore: { sort: "desc", nulls: "last" } },
+      { followers: { sort: "desc", nulls: "last" } },
+    ],
+    take: limit,
+  });
+  if (eligible.length === 0) return 0;
+
+  let processed = 0;
+  for (const result of eligible) {
+    const run = await prisma.enrichmentRun.create({
+      data: {
+        resultId: result.id,
+        workflow: workflow.id,
+        status: "running",
+        input: { source: "server-handler", handler: workflow.handler },
+      },
+    });
+
+    try {
+      const out = await handler({ result, workflowId: workflow.id });
+      const updateData: Record<string, unknown> = {
+        status: out.status,
+        completedAt: new Date(),
+        output: out.output ? JSON.parse(JSON.stringify(out.output)) : undefined,
+      };
+      if (out.status === "failed") updateData.error = out.error;
+      else if (out.status === "empty") updateData.error = out.reason ?? null;
+
+      await prisma.enrichmentRun.update({ where: { id: run.id }, data: updateData });
+
+      if (out.status === "completed") {
+        await prisma.result.update({
+          where: { id: result.id },
+          data: { email: out.email, emailSource: out.emailSource },
+        });
+      }
+      processed++;
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      await prisma.enrichmentRun.update({
+        where: { id: run.id },
+        data: { status: "failed", error: errorMsg, completedAt: new Date() },
+      });
+      console.error(`[enrichment:server] handler ${workflow.handler} threw for result ${result.id}:`, err);
+    }
+  }
+  return processed;
+}
+
+// ─── runner: "external-service" (Railway-deployed scraper worker) ─────────
+//
+// Synchronous batch POST to a separate Railway service (see fbm-scraper-worker
+// repo). The service performs HTTP fetches + email extraction and returns a
+// per-item result inline. Each batch corresponds to one HTTP round-trip.
+
+const EXTERNAL_SERVICE_BATCH_SIZE = 50;
+const EXTERNAL_SERVICE_TIMEOUT_MS = 60_000;
+
+type ExternalServiceResult = {
+  key: string;
+  url: string;
+  email: string | null;
+  source?: "mailto" | "json-ld" | "text";
+  reason?: string;
+  finalUrl?: string;
+};
+
+async function triggerExternalServiceEnrichment(
+  allKhSetIds: string[],
+  workflow: typeof ENRICHMENT_WORKFLOWS[number],
+  limit: number,
+  inputType: string,
+): Promise<number> {
+  const serviceUrl = process.env.SCRAPER_SERVICE_URL;
+  if (!serviceUrl) {
+    throw new Error("SCRAPER_SERVICE_URL not configured (cannot run external-service workflow)");
+  }
+  if (!workflow.servicePath) {
+    throw new Error(`workflow ${workflow.id} runner=external-service but no servicePath set`);
+  }
+
+  const where = buildEligibilityWhere(allKhSetIds, workflow, inputType);
+  const eligible = await prisma.result.findMany({
+    where: where as never,
+    select: { id: true, platformId: true, creatorName: true, crawlTargets: true },
+    orderBy: [
+      { campaignFitScore: { sort: "desc", nulls: "last" } },
+      { followers: { sort: "desc", nulls: "last" } },
+    ],
+    take: limit,
+  });
+  if (eligible.length === 0) return 0;
+
+  // Expand each Result into its first eligible URL. Today only crawlTargets
+  // workflows make sense for the external service.
+  const items: { resultId: string; key: string; url: string }[] = [];
+  for (const r of eligible) {
+    if (inputType === "crawlTargets") {
+      const urls = (r.crawlTargets ?? "")
+        .split(",")
+        .map((u) => u.trim())
+        .filter(Boolean);
+      const first = urls[0];
+      if (first) items.push({ resultId: r.id, key: r.id, url: first });
+    }
+  }
+  if (items.length === 0) return 0;
+
+  let processed = 0;
+  const batches = chunk(items, EXTERNAL_SERVICE_BATCH_SIZE);
+  for (const batch of batches) {
+    const runs = await Promise.all(
+      batch.map((item) =>
+        prisma.enrichmentRun.create({
+          data: {
+            resultId: item.resultId,
+            workflow: workflow.id,
+            status: "running",
+            input: { url: item.url, source: "external-service" },
+          },
+        })
+      )
+    );
+    const runByKey = new Map(runs.map((run, i) => [batch[i].key, run]));
+
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), EXTERNAL_SERVICE_TIMEOUT_MS);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (process.env.SCRAPER_AUTH_TOKEN) {
+        headers["Authorization"] = `Bearer ${process.env.SCRAPER_AUTH_TOKEN}`;
+      }
+
+      const resp = await fetch(`${serviceUrl}${workflow.servicePath}`, {
+        method: "POST",
+        headers,
+        signal: ctrl.signal,
+        body: JSON.stringify({ items: batch.map((i) => ({ key: i.key, url: i.url })) }),
+      }).finally(() => clearTimeout(timer));
+
+      if (!resp.ok) {
+        await prisma.enrichmentRun.updateMany({
+          where: { id: { in: runs.map((r) => r.id) } },
+          data: { status: "failed", error: `scraper service returned ${resp.status}`, completedAt: new Date() },
+        });
+        console.error(`[enrichment:external] ${workflow.id} HTTP ${resp.status} for ${batch.length} items`);
+        continue;
+      }
+
+      const body = (await resp.json()) as { results?: ExternalServiceResult[] };
+      const responseResults = body.results ?? [];
+
+      for (const res of responseResults) {
+        const run = runByKey.get(res.key);
+        if (!run) continue;
+
+        if (res.email) {
+          await prisma.enrichmentRun.update({
+            where: { id: run.id },
+            data: {
+              status: "completed",
+              completedAt: new Date(),
+              output: { email: res.email, source: res.source, finalUrl: res.finalUrl },
+            },
+          });
+          await prisma.result.update({
+            where: { id: run.resultId },
+            data: { email: res.email, emailSource: workflow.id },
+          });
+        } else {
+          await prisma.enrichmentRun.update({
+            where: { id: run.id },
+            data: {
+              status: "empty",
+              completedAt: new Date(),
+              error: res.reason ?? null,
+              output: { finalUrl: res.finalUrl },
+            },
+          });
+        }
+        processed++;
+      }
+
+      // Any run we didn't see in the response → mark failed.
+      const seenKeys = new Set(responseResults.map((r) => r.key));
+      const orphanIds = batch
+        .filter((b) => !seenKeys.has(b.key))
+        .map((b) => runByKey.get(b.key)?.id)
+        .filter((id): id is string => !!id);
+      if (orphanIds.length > 0) {
+        await prisma.enrichmentRun.updateMany({
+          where: { id: { in: orphanIds } },
+          data: { status: "failed", error: "scraper service omitted result", completedAt: new Date() },
+        });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await prisma.enrichmentRun.updateMany({
+        where: { id: { in: runs.map((r) => r.id) } },
+        data: { status: "failed", error: `scraper trigger error: ${msg}`, completedAt: new Date() },
+      });
+      console.error(`[enrichment:external] ${workflow.id} trigger threw:`, err);
+    }
+  }
+  return processed;
 }

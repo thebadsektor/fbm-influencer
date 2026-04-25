@@ -7,7 +7,9 @@
       "Bash(pnpm exec *)",
       "Bash(echo \"exit=$?\")",
       "Bash(node --env-file=.env check_enrichment.js)",
-      "Bash(pnpm build *)"
+      "Bash(pnpm build *)",
+      "Bash(node --env-file=.env check_enrichment_review.js)",
+      "Bash(echo \"tsc=$?\")"
     ]
   }
 }

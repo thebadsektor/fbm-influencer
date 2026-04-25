@@ -37,6 +37,19 @@ export async function POST(
     );
   }
 
+  // Server-side and external-service workflows run automatically via the
+  // discovery loop's runEnrichmentStep — they don't need (and don't yet
+  // support) manual triggering through this endpoint. Reject explicitly so
+  // the UI returns a clear message instead of silently mis-routing.
+  if (workflow.runner !== "n8n") {
+    return NextResponse.json(
+      {
+        error: `Workflow "${workflowId}" runs automatically via the discovery loop (runner: ${workflow.runner}). Manual triggering is only supported for n8n workflows.`,
+      },
+      { status: 400 }
+    );
+  }
+
   const campaign = await prisma.campaign.findFirst({
     where: isAdmin(user) ? { id } : { id, userId: user.id },
     include: { khSets: { select: { id: true } } },
