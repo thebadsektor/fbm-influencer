@@ -32,12 +32,24 @@ export async function GET(
   const sendsSince = new Date();
   sendsSince.setDate(sendsSince.getDate() - 13); // include today = 14 buckets
 
-  const [eligible, statusGroup, providerGroup, sentDrafts, failedDrafts, staleDrafts] =
+  const [eligible, withEmailTotal, statusGroup, providerGroup, sentDrafts, failedDrafts, staleDrafts] =
     await Promise.all([
+      // "Outreach-eligible" — has email AND passes the campaign fit threshold (60).
+      // This is what the dashboard's lead list and the "ready to email" count use.
       prisma.result.count({
         where: {
           khSetId: { in: khSetIds },
           campaignFitScore: { gte: 60 },
+          email: { not: null },
+          NOT: { email: "" },
+        },
+      }),
+      // "With email" total — every Result that has an email, regardless of fit
+      // score. Matches the number the Email Enrichment modal shows so the two
+      // surfaces reconcile.
+      prisma.result.count({
+        where: {
+          khSetId: { in: khSetIds },
           email: { not: null },
           NOT: { email: "" },
         },
@@ -140,6 +152,11 @@ export async function GET(
 
   return NextResponse.json({
     eligible,
+    withEmailTotal,
+    /** Difference = creators who have an email but didn't pass the fit-score
+     * threshold (campaignFitScore < 60). They show up in Email Enrichment but
+     * are intentionally excluded from outreach. */
+    belowFit: Math.max(0, withEmailTotal - eligible),
     statusCounts,
     sendsByDay,
     failed: failedDrafts.map((d) => ({

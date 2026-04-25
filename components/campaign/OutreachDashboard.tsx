@@ -39,6 +39,12 @@ interface StaleRow {
 
 interface Stats {
   eligible: number;
+  /** Total Result rows with an email, regardless of fit score. Matches the
+   * number the Email Enrichment modal shows. */
+  withEmailTotal?: number;
+  /** withEmailTotal - eligible: creators with an email but below the fit
+   * threshold, intentionally excluded from outreach. */
+  belowFit?: number;
   statusCounts: {
     draft: number;
     approved: number;
@@ -113,9 +119,13 @@ export function OutreachDashboard({ campaignId, isGenerating, onOpenLead, onGene
         <div className="grid grid-cols-4 gap-3">
           <StatCard
             icon={<Users className="h-4 w-4" />}
-            label="Eligible leads"
+            label="Outreach-ready"
             value={eligible}
-            sub="qualified with email"
+            sub={
+              stats.withEmailTotal !== undefined && stats.withEmailTotal !== eligible
+                ? `of ${stats.withEmailTotal} with email · ${stats.belowFit ?? stats.withEmailTotal - eligible} below fit threshold`
+                : "qualified with email"
+            }
           />
           <StatCard
             icon={<Sparkles className="h-4 w-4" />}
